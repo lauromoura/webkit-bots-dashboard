@@ -1,0 +1,9 @@
+{
+  "name": "WebKit Bot Mini Dashboard",
+  "short_name": "WKBots",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "white",
+  "description": "Yet another visualization tool for the bots",
+  "theme_color": "blue"
+}
