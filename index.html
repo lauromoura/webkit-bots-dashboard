@@ -5,28 +5,90 @@
     <title></title>
     <link rel="icon" href="data:,">
     <link rel="manifest" href="./manifest.json">
+    <style>
+
+        table {
+            table-layout: fixed;
+            width: 100%;
+            border-collapse: collapse;
+            border: 3px solid gray;
+        }
+        thead {
+            text-align: center;
+            background-color: lightgrey;
+        }
+        thead th:nth-child(2) {
+            width: 10%;
+        }
+        thead th:nth-child(3) {
+            width: 10%;
+        }
+        tbody tr:nth-child(odd) {
+            background-color: white;
+        }
+        tbody tr:nth-child(even) {
+            background-color: rgb(255, 241, 241);
+        }
+
+        .success {
+            background-color: lightgreen;
+        }
+
+        .failure {
+            background-color: pink;
+        }
+
+    </style>
 </head>
 <body>
     <script src="./app.js"></script>
-    <div id="header"></div>
-    <div id="gtk-release">
-        Last build: <span id="last-build"></span>
+    <div id="header">
+        <h2>Old-school WPE/WebKitGTK/JSC buildbot dashboard</h2>
     </div>
     <div id="wpe-builders">
         <h3>WPE post-commit bots</h3>
-        <ul id="wpe-builders-list">
-
-        </ul>
+        <table id="wpe-builders-list">
+            <thead>
+                <tr>
+                    <th>Builder Name</th>
+                    <th>Last build</th>
+                    <th>Finished</th>
+                    <th>Result</th>
+                    <th>Link to buildbot</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
     </div>
     <div id="gtk-builders">
         <h3>GTK post-commit bots</h3>
-        <ul id="gtk-builders-list">
-
-        </ul>
+        <table id="gtk-builders-list">
+            <thead>
+                <tr>
+                    <th>Builder Name</th>
+                    <th>Last build</th>
+                    <th>Finished</th>
+                    <th>Result</th>
+                    <th>Link to buildbot</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
     </div>
     <div id=builds">
-        <ul id="builds-list">
-        </ul>
+        <table id="builds-list">
+        </table>
     </div>
+    <template id=builderListEntry>
+        <tr>
+            <td class="builderName"></td>
+            <td class="lastBuildNumber"></td>
+            <td class="buildTime"></td>
+            <td class="builderStatus"></td>
+            <td class="externalLink"></td>
+        </tr>
+    </template>
 </body>
 </html>
