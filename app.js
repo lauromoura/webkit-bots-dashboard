@@ -168,6 +168,8 @@ function displayLastBuild(builderId, target) {
             return `${arg}`.padStart(2, '0');
         }
 
-        return  ret + `${n(hours)}h ${n(minutes)}m ${n(seconds)}s ago`;
+        if (hours > 0)
+            ret += ` ${n(hours)}h`
+        return  ret + ` ${n(minutes)}m ${n(seconds)}s ago`;
     }
 }
