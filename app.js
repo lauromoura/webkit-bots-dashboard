@@ -13,8 +13,12 @@ function urlForBuilder(builderId) {
     return `https://build.webkit.org/#/builders/${builderId}`;
 }
 
+function urlForJob(builderId, jobNumber) {
+    return `${urlForBuilder(builderId)}/builds/${jobNumber}`
+}
+
 async function getLastBuild(builderId) {
-    const path = urlFor(`builders/${builderId}/builds?order=-number&limit=1&complete=true`);
+    const path = urlFor(`builders/${builderId}/builds?order=-number&limit=6&complete=true`);
     console.log("Fetching path: " + path);
     const response = await fetch(path);
     return response.json().then(data => {
@@ -71,6 +75,13 @@ function displayBots(bots, targetList) {
     }
 }
 
+function createLinkForJob(builderId, jobNumber, text) {
+    let link = document.createElement("a");
+    link.setAttribute("href", urlForJob(builderId, jobNumber));
+    link.textContent = text;
+    return link;
+}
+
 function displayLastBuild(builderId, target) {
     // console.log(`Getting status of builderid ${builderId}`);
     getLastBuild(builderId).then(data => {
@@ -81,13 +92,13 @@ function displayLastBuild(builderId, target) {
         }
         // console.log(data);
         // console.log(data["builds"]);
-        let build = data.builds[0];
+        let build = data.builds.shift();
 
         {
             let cell = target.querySelector(".lastBuildNumber");
-            // FIXME Add link
             let state = `(Build #${build.number} )`;
-            cell.textContent = state;
+            let link = createLinkForJob(builderId, build.number, state);
+            cell.appendChild(link);
         }
 
         {
@@ -106,6 +117,25 @@ function displayLastBuild(builderId, target) {
             date.setUTCSeconds(build.complete_at);
             // console.log(date);
             cell.textContent = formatRelativeDate(build.complete_at);
+        }
+
+        {
+            let cell = target.querySelector(".otherBuilds");
+            let ul = document.createElement("ul");
+            for (const build of data.builds) {
+                let li = document.createElement("li");
+                let link = document.createElement("a");
+                link.setAttribute("href", urlForJob(builderId, build.number));
+                link.textContent = `${build.number}`;
+                li.appendChild(link);
+                if (build.state_string == "build successful") {
+                    li.classList.add("success");
+                } else {
+                    li.classList.add("failure");
+                }
+                ul.appendChild(li);
+            }
+            cell.appendChild(ul);
         }
     });
 

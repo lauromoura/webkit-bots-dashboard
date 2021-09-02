@@ -27,17 +27,29 @@
             background-color: white;
         }
         tbody tr:nth-child(even) {
-            background-color: rgb(255, 241, 241);
+            background-color: rgb(243, 243, 243);
         }
 
         .success {
+            border-radius: 5px;
             background-color: lightgreen;
         }
 
         .failure {
+            border-radius: 5px;
             background-color: pink;
         }
 
+        .otherBuilds > ul {
+            list-style: none;
+        }
+
+        .otherBuilds > ul > li {
+            display: inline;
+            padding: 5px;
+            border-radius: 5px;
+            margin: 2px;
+        }
     </style>
 </head>
 <body>
@@ -54,6 +66,7 @@
                     <th>Last build</th>
                     <th>Finished</th>
                     <th>Result</th>
+                    <th>Other builds</th>
                     <th>Link to buildbot</th>
                 </tr>
             </thead>
@@ -70,6 +83,7 @@
                     <th>Last build</th>
                     <th>Finished</th>
                     <th>Result</th>
+                    <th>Other builds</th>
                     <th>Link to buildbot</th>
                 </tr>
             </thead>
@@ -87,6 +101,7 @@
             <td class="lastBuildNumber"></td>
             <td class="buildTime"></td>
             <td class="builderStatus"></td>
+            <td class="otherBuilds"></td>
             <td class="externalLink"></td>
         </tr>
     </template>
