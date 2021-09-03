@@ -41,7 +41,7 @@ function displayBots(bots, targetList) {
 }
 
 function displayLastBuild(builderId, target) {
-    utils.getLastBuild(builderId).then(data => {
+    utils.getLastBuild(builderId, 6).then(data => {
         if (data === undefined)
             return;
 

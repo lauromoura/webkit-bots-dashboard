@@ -12,8 +12,8 @@ export function urlForJob(builderId, jobNumber) {
     return `${urlForBuilder(builderId)}/builds/${jobNumber}`
 }
 
-export async function getLastBuild(builderId) {
-    const path = urlFor(`builders/${builderId}/builds?order=-number&limit=6&complete=true`);
+export async function getLastBuild(builderId, number) {
+    const path = urlFor(`builders/${builderId}/builds?order=-number&limit=${number}&complete=true`);
     console.log("Fetching path: " + path);
     const response = await fetch(path);
     return response.json().then(data => {
