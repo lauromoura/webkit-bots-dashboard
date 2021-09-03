@@ -1,42 +1,7 @@
-class WKBotApp {
-    constructor() {
-    }
-}
-
-function urlFor(path) {
-    const BASE_URL = "https://build.webkit.org/api/v2/";
-    const URL_SUFFIX = "";
-    return BASE_URL + path + URL_SUFFIX;
-}
-
-function urlForBuilder(builderId) {
-    return `https://build.webkit.org/#/builders/${builderId}`;
-}
-
-function urlForJob(builderId, jobNumber) {
-    return `${urlForBuilder(builderId)}/builds/${jobNumber}`
-}
-
-async function getLastBuild(builderId) {
-    const path = urlFor(`builders/${builderId}/builds?order=-number&limit=6&complete=true`);
-    console.log("Fetching path: " + path);
-    const response = await fetch(path);
-    return response.json().then(data => {
-        console.log(data);
-        return data;
-    });
-}
-
-function isWPE(builder) {
-    return builder.tags.includes("WPE");
-}
-
-function isGTK(builder) {
-    return builder.tags.includes("GTK");
-}
+import * as utils from "./modules/utils.js";
 
 window.addEventListener('load', async e => {
-    let builders = urlFor('builders');
+    let builders = utils.urlFor('builders');
     console.log(`Fetching ${builders}`);
     const response = await(fetch(builders));
     if (!response.ok) {
@@ -47,11 +12,11 @@ window.addEventListener('load', async e => {
 
     response.json().then(data => {
         console.log(`Found ${data.meta.total} bots`);
-        const wpeBots = data.builders.filter(isWPE).sort((a, b) => a.name > b.name);
+        const wpeBots = data.builders.filter(utils.isWPE).sort((a, b) => a.name > b.name);
         let buildList = document.querySelector("#wpe-builders-list > tbody");
         displayBots(wpeBots, buildList);
 
-        const gtkBots = data.builders.filter(isGTK).sort((a, b) => a.name > b.name);
+        const gtkBots = data.builders.filter(utils.isGTK).sort((a, b) => a.name > b.name);
         buildList = document.querySelector("#gtk-builders-list > tbody");
         displayBots(gtkBots, buildList);
     });
@@ -64,26 +29,19 @@ function displayBots(bots, targetList) {
         let clone = template.content.firstElementChild.cloneNode(true);
         {
             let name = clone.querySelector(".builderName");
-            name.innerHTML = `<a href="./builder.html?${builder.builderid}">${builder.name}</a>`;
+            name.innerHTML = `<a href="./builder.html?builder=${builder.builderid}">${builder.name}</a>`;
         }
 
         displayLastBuild(builder.builderid, clone);
 
         let externalLink = clone.querySelector(".externalLink");
-        externalLink.innerHTML += `<a href="${urlForBuilder(builder.builderid)}">External link</a>`
+        externalLink.innerHTML += `<a href="${utils.urlForBuilder(builder.builderid)}">External link</a>`
         targetList.appendChild(clone);
     }
 }
 
-function createLinkForJob(builderId, jobNumber, text) {
-    let link = document.createElement("a");
-    link.setAttribute("href", urlForJob(builderId, jobNumber));
-    link.textContent = text;
-    return link;
-}
-
 function displayLastBuild(builderId, target) {
-    getLastBuild(builderId).then(data => {
+    utils.getLastBuild(builderId).then(data => {
         if (data === undefined)
             return;
 
@@ -93,7 +51,7 @@ function displayLastBuild(builderId, target) {
             let cell = target.querySelector(".lastBuild");
 
             let build_number_text = `(Build #${build.number})`;
-            let link = createLinkForJob(builderId, build.number, build_number_text);
+            let link = utils.createLinkForJob(builderId, build.number, build_number_text);
             link.style.float = "left";
             link.style.width = "30%";
             cell.appendChild(link);
@@ -112,7 +70,7 @@ function displayLastBuild(builderId, target) {
             let cell = target.querySelector(".buildTime");
             let date = new Date(0);
             date.setUTCSeconds(build.complete_at);
-            let date_str = formatRelativeDate(build.complete_at);
+            let date_str = utils.formatRelativeDate(build.complete_at);
 
             cell.textContent = date_str;
         }
@@ -123,7 +81,7 @@ function displayLastBuild(builderId, target) {
             for (const build of data.builds) {
                 let li = document.createElement("li");
                 let link = document.createElement("a");
-                link.setAttribute("href", urlForJob(builderId, build.number));
+                link.setAttribute("href", utils.urlForJob(builderId, build.number));
                 link.textContent = `${build.number}`;
                 li.appendChild(link);
                 if (build.state_string == "build successful") {
@@ -136,38 +94,4 @@ function displayLastBuild(builderId, target) {
             cell.appendChild(ul);
         }
     });
-
-    function formatRelativeDate(epoch) {
-        let ret = '';
-        let now = new Date();
-        let utcSecondsSinceEpoch = Math.round(now.getTime() / 1000);
-        let distance =utcSecondsSinceEpoch - epoch;
-
-        // FIXME replace with some lib?
-        let day_div = 3600 * 24;
-        let days = Math.floor(distance / day_div);
-        let remainder = distance % day_div;
-
-        if (days > 0) {
-            ret += `${days} days `;
-        }
-
-        let hour_div = 3600;
-        let hours = Math.floor(remainder / hour_div);
-        remainder = remainder % hour_div;
-
-        let minute_div = 60;
-        let minutes = Math.floor(remainder / minute_div);
-        remainder = remainder % minute_div;
-
-        let seconds = remainder;
-
-        let n = function(arg) {
-            return `${arg}`.padStart(2, '0');
-        }
-
-        if (hours > 0)
-            ret += ` ${n(hours)}h`
-        return  ret + ` ${n(minutes)}m ${n(seconds)}s ago`;
-    }
 }
