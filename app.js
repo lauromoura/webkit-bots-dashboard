@@ -83,40 +83,38 @@ function createLinkForJob(builderId, jobNumber, text) {
 }
 
 function displayLastBuild(builderId, target) {
-    // console.log(`Getting status of builderid ${builderId}`);
     getLastBuild(builderId).then(data => {
-        // console.log(`Got results for builderid ${builderId}`)
-        if (data === undefined) {
-            // console.log("NO DATA!!!!!")
+        if (data === undefined)
             return;
-        }
-        // console.log(data);
-        // console.log(data["builds"]);
+
         let build = data.builds.shift();
 
         {
-            let cell = target.querySelector(".lastBuildNumber");
-            let state = `(Build #${build.number} )`;
-            let link = createLinkForJob(builderId, build.number, state);
-            cell.appendChild(link);
-        }
+            let cell = target.querySelector(".lastBuild");
 
-        {
-            let cell = target.querySelector(".builderStatus");
-            cell.textContent = `${build.state_string}`;
+            let build_number_text = `(Build #${build.number})`;
+            let link = createLinkForJob(builderId, build.number, build_number_text);
+            link.style.float = "left";
+            link.style.width = "30%";
+            cell.appendChild(link);
+
             if (build.state_string == "build successful") {
                 cell.className += " success";
             } else {
                 cell.className += " failure";
             }
+            let status_span = document.createElement("span");
+            status_span.textContent = build.state_string;
+            cell.appendChild(status_span);
         }
 
         {
             let cell = target.querySelector(".buildTime");
             let date = new Date(0);
             date.setUTCSeconds(build.complete_at);
-            // console.log(date);
-            cell.textContent = formatRelativeDate(build.complete_at);
+            let date_str = formatRelativeDate(build.complete_at);
+
+            cell.textContent = date_str;
         }
 
         {

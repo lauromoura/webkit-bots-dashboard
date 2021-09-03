@@ -17,9 +17,6 @@
             text-align: center;
             background-color: lightgrey;
         }
-        thead th:nth-child(2) {
-            width: 10%;
-        }
         thead th:nth-child(3) {
             width: 10%;
         }
@@ -70,7 +67,6 @@
                     <th>Builder Name</th>
                     <th>Last build</th>
                     <th>Finished</th>
-                    <th>Result</th>
                     <th>Other builds</th>
                     <th>Link to buildbot</th>
                 </tr>
@@ -87,7 +83,6 @@
                     <th>Builder Name</th>
                     <th>Last build</th>
                     <th>Finished</th>
-                    <th>Result</th>
                     <th>Other builds</th>
                     <th>Link to buildbot</th>
                 </tr>
@@ -103,9 +98,8 @@
     <template id=builderListEntry>
         <tr>
             <td class="builderName"></td>
-            <td class="lastBuildNumber"></td>
+            <td class="lastBuild"></td>
             <td class="buildTime"></td>
-            <td class="builderStatus"></td>
             <td class="otherBuilds"></td>
             <td class="externalLink"></td>
         </tr>
