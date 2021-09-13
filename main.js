@@ -48,6 +48,24 @@ function displayLastBuild(builderId, target) {
         let build = data.builds.shift();
 
         {
+            let cell = target.querySelector(".currentBuild");
+            if (build.complete) {
+                cell.innerHTML += "Waiting for jobs";
+            } else {
+                cell.classList.add("building");
+                let build_number_text = `(Build #${build.number})`;
+                let link = utils.createLinkForJob(builderId, build.number, build_number_text);
+                cell.appendChild(link);
+
+                let status_span = document.createElement("span");
+                status_span.textContent = ` ${build.state_string}`;
+                cell.appendChild(status_span);
+
+                build = data.builds.shift();
+            }
+        }
+
+        {
             let cell = target.querySelector(".lastBuild");
 
             let build_number_text = `(Build #${build.number})`;

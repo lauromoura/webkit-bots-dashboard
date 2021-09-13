@@ -20,7 +20,7 @@
             text-align: center;
             background-color: lightgrey;
         }
-        thead th:nth-child(3) {
+        thead th:nth-child(4) {
             width: 10%;
         }
         tbody tr:nth-child(odd) {
@@ -43,6 +43,11 @@
         .failure {
             border-radius: 5px;
             background-color: pink;
+        }
+
+        .building {
+            border-radius: 10px;
+            background-color: yellow;
         }
 
         .otherBuilds > ul {
@@ -68,6 +73,7 @@
             <thead>
                 <tr>
                     <th>Builder Name</th>
+                    <th>Current build</th>
                     <th>Last build</th>
                     <th>Finished</th>
                     <th>Other builds</th>
@@ -84,6 +90,7 @@
             <thead>
                 <tr>
                     <th>Builder Name</th>
+                    <th>Current Build</th>
                     <th>Last build</th>
                     <th>Finished</th>
                     <th>Other builds</th>
@@ -101,6 +108,7 @@
     <template id=builderListEntry>
         <tr>
             <td class="builderName"></td>
+            <td class="currentBuild"></td>
             <td class="lastBuild"></td>
             <td class="buildTime"></td>
             <td class="otherBuilds"></td>

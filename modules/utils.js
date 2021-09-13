@@ -13,7 +13,7 @@ export function urlForJob(builderId, jobNumber) {
 }
 
 export async function getLastBuild(builderId, number) {
-    const path = urlFor(`builders/${builderId}/builds?order=-number&limit=${number}&complete=true`);
+    const path = urlFor(`builders/${builderId}/builds?order=-number&limit=${number+1}`);
     console.log("Fetching path: " + path);
     const response = await fetch(path);
     return response.json().then(data => {
