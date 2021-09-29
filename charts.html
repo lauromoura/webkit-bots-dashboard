@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebKit test resuls charts playground</title>
+    <script src="https://cdn.plot.ly/plotly-2.4.2.min.js"></script>
+    <style>
+    </style>
+</head>
+<body>
+    <h1>WebKit test results stats</h1>
+    <div id="platformData">
+        Platform: <span id="runPlatform"></span><br>
+        Architecture: <span id="runArch"></span><br>
+        Style: <span id="runStyle"></span><br>
+    </div>
+    <h2>Layout test regressions</h2>
+    <div id="regressions" style="width:800px; height:600px;" class="chart"></div>
+    <br>
+    <h2>Layout test coverage</h2>
+    <div id="coverage" style="width:800px; height:600px;" class="chart"></div>
+    <br>
+    <h2>TODO</h2>
+    <ul>
+        <li>Check why the results are coming twice</li>
+    </ul>
+    <script>
+
+        function fillData(data) {
+            let builder = data[0];
+
+            config = builder['configuration'];
+            console.log(config);
+            document.getElementById("runPlatform").innerText = config['platform'];
+            document.getElementById("runArch").innerText = config['architecture'];
+            document.getElementById("runStyle").innerText = config['style'];
+
+
+            let results = builder['results'];
+            console.log(results);
+            // let recentResults = results.slice(-1000);
+
+            plotRegressions(results);
+        }
+
+        function plotRegressions(results) {
+            console.log("Plotting regressions");
+            let x_data = [];
+            let fail_data = [];
+            let crash_data = [];
+            let timeout_data = [];
+            
+            let run_data = [];
+            let skipped_data = [];
+            let known_regressions_data = [];
+            
+            results.forEach(element => {
+                console.log(element)
+                let details = element['details'];
+                let buildNumber = details['build-number'];
+                
+                let startTime = new Date(0);
+                startTime.setUTCSeconds(element['start_time']);
+                
+                let stats = element['stats'];
+                
+                // FIXME Read the results.webkit.org API doc to check why the results are coming
+                // twice for each build run
+                let tests_run = stats['tests_run'];
+                if (tests_run <= 1) {
+                    return;
+                }
+                
+                
+                let unexpected_failures = stats['tests_unexpected_failed'];
+                let unexpected_crashes = stats['tests_unexpected_crashed'];
+                let unexpected_timeouts = stats['tests_unexpected_timedout'];
+                
+                let tests_skipped = stats['tests_skipped'];
+                let tests_known_regressions = stats['tests_crashed'] - unexpected_crashes;
+                tests_known_regressions += stats['tests_failed'] - unexpected_failures;
+                tests_known_regressions += stats['tests_timedout'] - unexpected_timeouts;
+                
+                let st = startTime;
+                let timestamp = `${st.getFullYear()}/${st.getMonth()}/${st.getDay()} ${st.getHours()}:${st.getMinutes()}:${st.getSeconds()}`
+                console.log(st);
+                console.log(timestamp);
+                x_data.push(timestamp);
+                fail_data.push(unexpected_failures);
+                crash_data.push(unexpected_crashes);
+                timeout_data.push(unexpected_timeouts);
+                
+                run_data.push(tests_run);
+                skipped_data.push(tests_skipped);
+                known_regressions_data.push(tests_known_regressions);
+                console.log(`Pushed build ${buildNumber} with ${unexpected_failures}`)
+            });
+            let regressions_chart = document.getElementById("regressions");
+            Plotly.newPlot(regressions_chart, [
+                {
+                x: x_data,
+                y: fail_data,
+                name: "Failures",
+                },
+                {
+                x: x_data,
+                y: crash_data,
+                name: "Crashes",
+                },
+                {
+                x: x_data,
+                y: timeout_data,
+                name: "Timeouts",
+                },
+            ],
+            {
+                margin: { t: 0 }
+            });
+
+            let coverage_chart = document.getElementById("coverage");
+            Plotly.newPlot(coverage_chart, [
+                {
+                x: x_data,
+                y: run_data,
+                name: "Run",
+                },
+                {
+                x: x_data,
+                y: skipped_data,
+                name: "Skipped",
+                },
+                {
+                x: x_data,
+                y: known_regressions_data,
+                name: "Known regressions",
+                },
+            ],
+            {
+                margin: { t: 0 }
+            });
+
+        }
+
+        window.onload = () => {
+            // fetch("./layout-tests-wpe.json").then(response => response.json()).then(data => fillData(data));
+            // CORS failures...
+            fetch("https://results.webkit.org/api/results/layout-tests?platform=WPE&style=release", {
+                method: "GET",
+                mode: "no-cors"
+            })
+                .then(response => response.json())
+                .then(data => fillData(data));
+        };
+    </script>
+</body>
+</html>
