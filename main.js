@@ -20,6 +20,12 @@ window.addEventListener('load', async e => {
         buildList = document.querySelector("#gtk-builders-list > tbody");
         displayBots(gtkBots, buildList);
     });
+
+    {
+        let timestamp_span = document.getElementById("timestamp");
+        let timestamp = new Date();
+        timestamp_span.textContent = timestamp.toString();
+    }
 });
 
 function displayBots(bots, targetList) {
