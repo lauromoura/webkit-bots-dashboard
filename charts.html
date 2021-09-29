@@ -153,14 +153,12 @@
         }
 
         window.onload = () => {
-            // fetch("./layout-tests-wpe.json").then(response => response.json()).then(data => fillData(data));
             // CORS failures...
-            fetch("https://results.webkit.org/api/results/layout-tests?platform=WPE&style=release", {
-                method: "GET",
-                mode: "no-cors"
-            })
-                .then(response => response.json())
-                .then(data => fillData(data));
+            // fetch("https://results.webkit.org/api/results/layout-tests?platform=WPE&style=release", {
+                //     method: "GET",
+                //     mode: "cors"
+                // })
+            fetch("./layout-tests-wpe.json").then(response => response.json()).then(data => fillData(data));
         };
     </script>
 </body>
