@@ -6,23 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebKit test resuls charts playground</title>
     <script src="https://cdn.plot.ly/plotly-2.4.2.min.js"></script>
-    <style>
-        body {
-            font-family: sans-serif;
-        }
-    </style>
+    <link rel="stylesheet" type="text/css" href="charts.css" />
 </head>
 <body>
+    <script type="module" src="./charts.js"></script>
     <h1>WebKit test results stats</h1>
     <nav role="navigation" class="table-of-contents">
         <h2>Contents</h2>
         <ul>
-            <li><a href="#platformData">Platform data</a></li>
+            <li><a href="#configuration">Platform data</a></li>
             <li><a href="#regressions">Test suite regressions</a></li>
             <li><a href="#coverage">Test suite coverage</a></li>
         </ul>
     </nav>
-    <div id="platformData">
+    <h2 id="configuration">Configuration</h2>
+    <div>
         Platform: <span id="runPlatform"></span><br>
         Architecture: <span id="runArch"></span><br>
         Style: <span id="runStyle"></span><br>
@@ -30,136 +28,10 @@
     <div>
     </div>
     <h2 id="regressions">Layout test regressions</h2>
-    <div id="regressionsChart" style="width:800px; height:600px;" class="chart"></div>
+    <div id="regressionsChart" style="width:80%; height:600px;" class="chart"></div>
     <br>
     <h2 id="coverage">Layout test coverage</h2>
-    <div id="coverageChart" style="width:800px; height:600px;" class="chart"></div>
+    <div id="coverageChart" style="width:80%; height:600px;" class="chart"></div>
     <br>
-    <script>
-
-        function fillData(data) {
-            let builder = data[0];
-
-            config = builder['configuration'];
-            console.log(config);
-            document.getElementById("runPlatform").innerText = config['platform'];
-            document.getElementById("runArch").innerText = config['architecture'];
-            document.getElementById("runStyle").innerText = config['style'];
-
-
-            let results = builder['results'];
-            console.log(results);
-            // let recentResults = results.slice(-1000);
-
-            plotRegressions(results);
-        }
-
-        function plotRegressions(results) {
-            console.log("Plotting regressions");
-            let x_data = [];
-            let fail_data = [];
-            let crash_data = [];
-            let timeout_data = [];
-            
-            let run_data = [];
-            let skipped_data = [];
-            let known_regressions_data = [];
-            
-            results.forEach(element => {
-                console.log(element)
-                let details = element['details'];
-                let buildNumber = details['build-number'];
-                
-                let startTime = new Date(0);
-                startTime.setUTCSeconds(element['start_time']);
-                
-                let stats = element['stats'];
-                
-                // FIXME Read the results.webkit.org API doc to check why the results are coming
-                // twice for each build run
-                let tests_run = stats['tests_run'];
-                if (tests_run <= 1) {
-                    return;
-                }
-                
-                
-                let unexpected_failures = stats['tests_unexpected_failed'];
-                let unexpected_crashes = stats['tests_unexpected_crashed'];
-                let unexpected_timeouts = stats['tests_unexpected_timedout'];
-                
-                let tests_skipped = stats['tests_skipped'];
-                let tests_known_regressions = stats['tests_crashed'] - unexpected_crashes;
-                tests_known_regressions += stats['tests_failed'] - unexpected_failures;
-                tests_known_regressions += stats['tests_timedout'] - unexpected_timeouts;
-                
-                let st = startTime;
-                let timestamp = `${st.getFullYear()}/${st.getMonth()}/${st.getDay()} ${st.getHours()}:${st.getMinutes()}:${st.getSeconds()}`
-                console.log(st);
-                console.log(timestamp);
-                x_data.push(timestamp);
-                fail_data.push(unexpected_failures);
-                crash_data.push(unexpected_crashes);
-                timeout_data.push(unexpected_timeouts);
-                
-                run_data.push(tests_run);
-                skipped_data.push(tests_skipped);
-                known_regressions_data.push(tests_known_regressions);
-                console.log(`Pushed build ${buildNumber} with ${unexpected_failures}`)
-            });
-            let regressions_chart = document.getElementById("regressionsChart");
-            Plotly.newPlot(regressions_chart, [
-                {
-                x: x_data,
-                y: fail_data,
-                name: "Failures",
-                },
-                {
-                x: x_data,
-                y: crash_data,
-                name: "Crashes",
-                },
-                {
-                x: x_data,
-                y: timeout_data,
-                name: "Timeouts",
-                },
-            ],
-            {
-                margin: { t: 0 }
-            });
-
-            let coverage_chart = document.getElementById("coverageChart");
-            Plotly.newPlot(coverage_chart, [
-                {
-                x: x_data,
-                y: run_data,
-                name: "Run",
-                },
-                {
-                x: x_data,
-                y: skipped_data,
-                name: "Skipped",
-                },
-                {
-                x: x_data,
-                y: known_regressions_data,
-                name: "Known regressions",
-                },
-            ],
-            {
-                margin: { t: 0 }
-            });
-
-        }
-
-        window.onload = () => {
-            // CORS failures...
-            // fetch("https://results.webkit.org/api/results/layout-tests?platform=WPE&style=release", {
-                //     method: "GET",
-                //     mode: "cors"
-                // })
-            fetch("./layout-tests-wpe.json").then(response => response.json()).then(data => fillData(data));
-        };
-    </script>
 </body>
 </html>
