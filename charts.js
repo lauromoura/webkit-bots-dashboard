@@ -75,7 +75,27 @@ function fillData(data) {
   plotRegressions(resultsData);
 }
 
+const configurations = {
+  "wpe-release": results.WPEReleaseLayout,
+  "wpe-release": results.WPEDebugLayout,
+};
+
+function changeTo(configuration) {
+
+  if (configuration == "wpe-release")
+    results.WPEReleaseLayout().then(fillData);
+  else if (configuration == "wpe-debug")
+    results.WPEDebugLayout().then(fillData);
+  else
+    console.log(`Unsupported config: ${configuration}`);
+}
+
 window.onload = () => {
   // FIXME Fetch live data after CORS is enabled at the server
-  results.WPEReleaseLayout().then((data) => fillData(data));
+  let select = document.getElementById("bot-select");
+  select.addEventListener('change', (event) => {
+    console.log(event.target.value);
+    changeTo(event.target.value);
+  });
+  changeTo(select.value);
 };

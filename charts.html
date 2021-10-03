@@ -21,6 +21,21 @@
     </nav>
     <h2 id="configuration">Configuration</h2>
     <div>
+        <label for="bot-select">Choose a configuration:</label>
+        <select name="bot" id="bot-select">
+            <!-- FIXME Hard coded bots -->
+            <optgroup label="WPE">
+                <option value="wpe-release">WPE Release</option>
+                <option value="wpe-debug">WPE Debug</option>
+            </optgroup>
+            <optgroup label="GTK">
+                <option value="gtk-release-xvfb">GTK Release Xvfb</option>
+                <option value="gtk-release-wayland">GTK Release Wayland</option>
+                <option value="gtk-release-gtk4">GTK Release GTK4</option>
+                <option value="gtk-debug-xvfb">GTK Debug Xvfb</option>
+            </optgroup>
+        </select>
+    <div>
         Platform: <span id="runPlatform"></span><br>
         Architecture: <span id="runArch"></span><br>
         Style: <span id="runStyle"></span><br>
