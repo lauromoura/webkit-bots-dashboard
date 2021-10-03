@@ -25,9 +25,9 @@ function plotRegressions(resultsData) {
       return;
     }
 
-    const unexpectedFailures = stats.tests_unexpected_failed;
     const unexpectedCrashes = stats.tests_unexpected_crashed;
-    const unexpectedTimeouts = stats.tests_unexpected_timedout;
+    const unexpectedTimeouts = stats.tests_unexpected_timedout - unexpectedCrashes;
+    const unexpectedFailures = stats.tests_unexpected_failed - unexpectedTimeouts - unexpectedCrashes;
 
     const testsSkipped = stats.tests_skipped;
     let testsKnownRegressions = stats.tests_crashed - unexpectedCrashes;
@@ -35,7 +35,7 @@ function plotRegressions(resultsData) {
     testsKnownRegressions += stats.tests_timedout - unexpectedTimeouts;
 
     const st = startTime;
-    const timestamp = `${st.getFullYear()}/${st.getMonth()}/${st.getDay()} ${st.getHours()}:${st.getMinutes()}:${st.getSeconds()}`;
+    const timestamp = `${st.getFullYear()}/${st.getMonth()+1}/${st.getDate()}   ${st.getHours()}:${st.getMinutes()}:${st.getSeconds()}`;
     xData.push(timestamp);
     failData.push(unexpectedFailures);
     crashData.push(unexpectedCrashes);
