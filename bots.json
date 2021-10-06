@@ -1,0 +1,8 @@
+{
+    "wpe-release": "platform=WPE&style=release",
+    "wpe-debug": "platform=WPE&style=debug",
+    "gtk-release": "platform=GTK&style=release&version_name=Xvfb&version=5.5.0",
+    "gtk-debug": "platform=GTK&style=debug&version_name=Xvfb",
+    "gtk-release-wayland": "platform=GTK&style=release&version_name=Wayland",
+    "gtk-release-gtk4": "platform=GTK&style=release&version_name=Xvfb&version=4.19.0"
+}

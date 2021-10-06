@@ -11,9 +11,10 @@ function plotRegressions(resultsData) {
   const runData = [];
   const skippedData = [];
   const knownRegressionsData = [];
+  const hoverText = [];
 
   /* eslint camelcase: ["error", {ignoreDestructuring: true}] */
-  resultsData.forEach(({ start_time, stats }) => {
+  resultsData.forEach(({ details, start_time, stats }) => {
     const startTime = new Date(0);
     startTime.setUTCSeconds(start_time);
 
@@ -35,8 +36,9 @@ function plotRegressions(resultsData) {
     testsKnownRegressions += stats.tests_timedout - unexpectedTimeouts;
 
     const st = startTime;
-    const timestamp = `${st.getFullYear()}/${st.getMonth()+1}/${st.getDate()}   ${st.getHours()}:${st.getMinutes()}:${st.getSeconds()}`;
+    const timestamp = `${st.getFullYear()}/${st.getMonth() + 1}/${st.getDate()}   ${st.getHours()}:${st.getMinutes()}:${st.getSeconds()}`;
     xData.push(timestamp);
+    hoverText.push(`Build #${details['build-number']}`);
     failData.push(unexpectedFailures);
     crashData.push(unexpectedCrashes);
     timeoutData.push(unexpectedTimeouts);
@@ -45,11 +47,20 @@ function plotRegressions(resultsData) {
     skippedData.push(testsSkipped);
     knownRegressionsData.push(testsKnownRegressions);
   });
+
+  const hoverTemplate = 'Build %{text}';
+
   const regressionsChart = document.getElementById('regressionsChart');
   Plotly.newPlot(regressionsChart, [
-    { x: xData, y: failData, name: 'Failures' },
-    { x: xData, y: crashData, name: 'Crashes' },
-    { x: xData, y: timeoutData, name: 'Timeouts' },
+    {
+      x: xData, y: failData, text: hoverText, hoverTemplate, name: 'Failures',
+    },
+    {
+      x: xData, y: crashData, text: hoverText, hoverTemplate, name: 'Crashes',
+    },
+    {
+      x: xData, y: timeoutData, text: hoverText, hoverTemplate, name: 'Timeouts',
+    },
   ],
   { margin: { t: 0 } });
 
@@ -71,31 +82,14 @@ function fillData(data) {
   document.getElementById('runStyle').innerText = config.style;
 
   const resultsData = builder.results;
-  console.log(`Got ${resultsData.length} records`);
   plotRegressions(resultsData);
-}
-
-const configurations = {
-  "wpe-release": results.WPEReleaseLayout,
-  "wpe-release": results.WPEDebugLayout,
-};
-
-function changeTo(configuration) {
-
-  if (configuration == "wpe-release")
-    results.WPEReleaseLayout().then(fillData);
-  else if (configuration == "wpe-debug")
-    results.WPEDebugLayout().then(fillData);
-  else
-    console.log(`Unsupported config: ${configuration}`);
 }
 
 window.onload = () => {
   // FIXME Fetch live data after CORS is enabled at the server
-  let select = document.getElementById("bot-select");
+  const select = document.getElementById('bot-select');
   select.addEventListener('change', (event) => {
-    console.log(event.target.value);
-    changeTo(event.target.value);
+    results.applyTo(event.target.value, fillData);
   });
-  changeTo(select.value);
+  results.applyTo(select.value, fillData);
 };
