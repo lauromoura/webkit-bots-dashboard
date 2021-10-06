@@ -2,7 +2,7 @@ async function loadConfig() {
   return fetch('./bots.json').then((response) => response.json());
 }
 
-export default async function applyTo(configuration, callback) {
+export async function applyTo(configuration, callback) {
   const configs = await loadConfig();
   console.log(configs);
   if (configuration in configs) {
