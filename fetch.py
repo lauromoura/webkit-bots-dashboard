@@ -6,11 +6,6 @@ from urllib import request
 
 SERVER = 'https://results.webkit.org/api/results/layout-tests'
 
-def normalize_platform_name(name):
-    return name
-    # sep = '-'
-    # return sep.join(token.lower() for token in name.split(sep))
-
 def main(argv=None):
     if argv is None:
         argv=sys.argv
@@ -20,16 +15,16 @@ def main(argv=None):
 
 
     for platform, query in data.items():
-        print(platform, normalize_platform_name(platform), query)
+        print(platform, query)
 
-        outfilename = f'layout-tests-{normalize_platform_name(platform)}.json'
-        print(f'Saving to {outfilename}')
+        outfilename = 'layout-tests-{}.json'.format(platform)
+        print('Saving to {}'.format(outfilename))
 
-        with request.urlopen(f'{SERVER}?{query}') as response:
-            print(f'Fetching {platform}...')
+        with request.urlopen('{}?{}'.format(SERVER, query)) as response:
+            print('Fetching {}...'.format(platform))
             data = response.read()
             with open(outfilename, 'wb') as handle:
-                print(f'Saving to {outfilename}')
+                print('Saving to {}'.format(outfilename))
                 handle.write(data)
 
 if __name__ == "__main__":
