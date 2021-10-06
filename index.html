@@ -9,6 +9,7 @@
     <style>
         body {
             font-size: 12px;
+            font-family: sans-serif;
         }
 
         table {
@@ -61,6 +62,15 @@
             border-radius: 5px;
             margin: 2px;
         }
+
+        .linkButton {
+            color: white;
+            background-color: #13a4a4;
+            font-size: 16px;
+            padding: 5px;
+            border-radius: 2px;
+            text-decoration: none;
+        }
     </style>
 </head>
 <body>
@@ -71,6 +81,8 @@
     <div id="metadata">
         Last sync: <span id="timestamp"></span>
     </div>
+    <br>
+    <a class="linkButton" href="./charts.html">Test run charts</a>
     <div id="wpe-builders">
         <h3>WPE post-commit bots</h3>
         <table id="wpe-builders-list">
