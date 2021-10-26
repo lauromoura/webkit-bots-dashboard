@@ -94,7 +94,7 @@ function displayLastBuild(builderId, target) {
             let cell = target.querySelector(".buildTime");
             let date = new Date(0);
             date.setUTCSeconds(build.complete_at);
-            let date_str = utils.formatRelativeDate(build.complete_at);
+            let date_str = utils.formatRelativeDateFromNow(build.complete_at);
 
             cell.textContent = date_str;
         }

@@ -4,19 +4,106 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <link rel="icon" href="data:,">
+    <title>WebKit Bots Dashboard - Builder info</title>
+    <style>
+        body {
+            font-size: 12px;
+            font-family: sans-serif;
+        }
+
+        table {
+            table-layout: fixed;
+            width: 100%;
+            border-collapse: collapse;
+            border: 3px solid gray;
+        }
+        thead {
+            text-align: center;
+            background-color: lightgrey;
+        }
+
+        td > a {
+            color: black;
+        }
+
+        thead th:nth-child(1) {
+            width: 50px;
+        }
+        thead th:nth-child(2) {
+            width: 200px;
+        }
+        thead th:nth-child(3) {
+            width: 150px;
+        }
+        tbody tr:nth-child(odd) {
+            background-color: white;
+        }
+        tbody tr:nth-child(even) {
+            background-color: rgb(243, 243, 243);
+        }
+
+        tbody tr td:nth-child(1) {
+            text-align: center;
+        }
+        tbody tr td:nth-child(2) {
+            text-align: center;
+        }
+
+        .success {
+            border-radius: 5px;
+            background-color: lightgreen;
+        }
+
+        .failure {
+            border-radius: 5px;
+            /* FIXME: ugly background with default link color */
+            background-color: rgb(255, 100, 100);
+            font-weight: bold;
+        }
+
+        .building {
+            border-radius: 5px;
+            background-color: yellow;
+        }
+    </style>
 </head>
 <body>
-    <script>
-        window.addEventListener('load', async e => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const params = Object.fromEntries(urlParams.entries());
-            const builderId = params.builder;
-            
-        });
-    </script>
+    <script type="module" src="./builder.js"></script>
     <div>
-        <h2>Details for builder </h2>
+        <h2>Details for builder <span id="builderTitle"></span></h2>
     </div>
+    <section>
+        <ul>
+            <li>Builder Name: <span id="builderName"></span></li>
+            <li id="builderURL">Builder URL: </li>
+
+        </ul>
+    </section>
+    <section>
+        <table id="jobsList">
+            <thead>
+                <tr>
+                    <th>Job number</th>
+                    <th>Started</th>
+                    <th>Job duration</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+
+            </tbody>
+        </table>
+        <template id="jobListEntry">
+            <tr>
+                <td class="jobNumber"></td>
+                <td class="jobStarted"></td>
+                <td class="jobDuration"></td>
+                <td class="jobStatus"></td>
+            </tr>
+        </template>
+    </section>
+    <br>
+    <footer><a href="./">Back to builder list</a></footer>
 </body>
 </html>

@@ -30,6 +30,13 @@ export function isGTK(builder) {
     return builder.tags.includes("GTK");
 }
 
+export function createLinkFor(href, text) {
+    let link = document.createElement("a");
+    link.setAttribute("href", href);
+    link.textContent = text;
+    return link;
+}
+
 export function createLinkForJob(builderId, jobNumber, text) {
     let link = document.createElement("a");
     link.setAttribute("href", urlForJob(builderId, jobNumber));
@@ -37,12 +44,10 @@ export function createLinkForJob(builderId, jobNumber, text) {
     return link;
 }
 
-
-export function formatRelativeDate(epoch) {
+export function formatRelativeDate(from, to, suffix) {
+    console.log(from, to, suffix);
     let ret = '';
-    let now = new Date();
-    let utcSecondsSinceEpoch = Math.round(now.getTime() / 1000);
-    let distance =utcSecondsSinceEpoch - epoch;
+    let distance = to - from;
 
     // FIXME replace with some lib?
     let day_div = 3600 * 24;
@@ -69,5 +74,14 @@ export function formatRelativeDate(epoch) {
 
     if (hours > 0)
         ret += ` ${n(hours)}h`
-    return  ret + ` ${n(minutes)}m ${n(seconds)}s ago`;
+    return  ret + ` ${n(minutes)}m ${n(seconds)}s${suffix}`;
+}
+
+
+export function formatRelativeDateFromNow(target, suffix=" ago") {
+    let ret = '';
+    let now = new Date();
+    let utcSecondsSinceEpoch = Math.round(now.getTime() / 1000);
+
+    return formatRelativeDate(target, utcSecondsSinceEpoch, suffix);
 }
