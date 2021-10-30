@@ -4,8 +4,8 @@ export function urlFor(path) {
     return BASE_URL + path + URL_SUFFIX;
 }
 
-export function urlForBuilder(builderId) {
-    return `https://build.webkit.org/#/builders/${builderId}`;
+export function urlForBuilder(path) {
+    return `https://build.webkit.org/#/builders/${path}`;
 }
 
 export function urlForJob(builderId, jobNumber) {
@@ -17,7 +17,6 @@ export async function getLastBuild(builderId, number) {
     console.log("Fetching path: " + path);
     const response = await fetch(path);
     return response.json().then(data => {
-        console.log(data);
         return data;
     });
 }
@@ -44,8 +43,7 @@ export function createLinkForJob(builderId, jobNumber, text) {
     return link;
 }
 
-export function formatRelativeDate(from, to, suffix) {
-    console.log(from, to, suffix);
+export function formatRelativeDate(from, to, suffix, only_days) {
     let ret = '';
     let distance = to - from;
 
@@ -55,7 +53,15 @@ export function formatRelativeDate(from, to, suffix) {
     let remainder = distance % day_div;
 
     if (days > 0) {
-        ret += `${days} days `;
+        if (days > 1)
+            ret += `${days} days `;
+        else
+            ret += `${days} day `;
+
+        if (only_days) {
+            return ret + `${suffix}`;
+        }
+
     }
 
     let hour_div = 3600;
@@ -78,10 +84,10 @@ export function formatRelativeDate(from, to, suffix) {
 }
 
 
-export function formatRelativeDateFromNow(target, suffix=" ago") {
+export function formatRelativeDateFromNow(target, suffix=" ago", only_days=false) {
     let ret = '';
     let now = new Date();
     let utcSecondsSinceEpoch = Math.round(now.getTime() / 1000);
 
-    return formatRelativeDate(target, utcSecondsSinceEpoch, suffix);
+    return formatRelativeDate(target, utcSecondsSinceEpoch, suffix, only_days);
 }

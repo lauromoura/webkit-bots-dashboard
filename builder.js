@@ -40,7 +40,7 @@ window.addEventListener('load', async e => {
         data.builds.forEach(element => {
             let clone = template.content.firstElementChild.cloneNode(true);
             let number_cell = clone.querySelector('.jobNumber');
-            let number_url = utils.urlFor(`builders/${builderId}/builds/${element.number}`);
+            let number_url = utils.urlForBuilder(`${builderId}/builds/${element.number}`);
             let number_link  = utils.createLinkFor(number_url, `#${element.number}`);
             number_cell.appendChild(number_link);
 
@@ -53,7 +53,7 @@ window.addEventListener('load', async e => {
             }
 
             let started_cell = clone.querySelector('.jobStarted');
-            let started = utils.formatRelativeDateFromNow(element.started_at);
+            let started = utils.formatRelativeDateFromNow(element.started_at, " ago", true);
             started_cell.innerText = started;
             
             let duration_cell = clone.querySelector('.jobDuration');
