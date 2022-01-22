@@ -25,7 +25,7 @@ window.addEventListener('load', async e => {
         document.getElementById("builderURL").appendChild(utils.createLinkFor(builderURL, builderURL));
     });
 
-    const jobsUrl = utils.urlFor(`builders/${builderId}/builds?limit=100&order=-number`);
+    const jobsUrl = utils.urlFor(`builders/${builderId}/builds?limit=100&order=-number&property=identifier`);
     const jobsResponse = await fetch(jobsUrl);
     if (!jobsResponse.ok) {
         // FIXME use some kind of alert?
@@ -55,7 +55,13 @@ window.addEventListener('load', async e => {
             let started_cell = clone.querySelector('.jobStarted');
             let started = utils.formatRelativeDateFromNow(element.started_at, " ago", true);
             started_cell.innerText = started;
-            
+
+            let identifier_cell = clone.querySelector('.jobIdentifier');
+            let identifier = element.properties.identifier[0];
+            let identifierURL = `https://commits.webkit.org/${identifier}`;
+            let identifierLink = utils.createLinkFor(identifierURL, identifier);
+            identifier_cell.appendChild(identifierLink);
+
             let duration_cell = clone.querySelector('.jobDuration');
             if (element.complete) {
                 let duration = utils.formatRelativeDate(element.started_at, element.complete_at, "");
