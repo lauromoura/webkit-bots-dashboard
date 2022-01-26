@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Non-unified build time comparison</title>
+    <style>
+        body {
+            font-size: 12px;
+            font-family: sans-serif;
+        }
+
+        table {
+            table-layout: fixed;
+            /* width: 100%; */
+            border-collapse: collapse;
+            border: 3px solid gray;
+        }
+        thead {
+            text-align: center;
+            background-color: lightgrey;
+            font-weight: bold;
+        }
+
+        td > a {
+            color: black;
+        }
+        tbody tr:nth-child(odd) {
+            background-color: white;
+        }
+        tbody tr:nth-child(even) {
+            background-color: rgb(243, 243, 243);
+        }
+        thead th:nth-child(2) {
+            width: 150px;
+        }
+        thead th:nth-child(3) {
+            width: 100px;
+        }
+        thead th:nth-child(4) {
+            width: 100px;
+        }
+
+        tbody tr td {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <script type="module" src="./unified.js"></script>
+    <h1>Non unified vs unified build times comparison</h1>
+    <br>
+    <p>This is a simple comparison of the build times between the <a href="https://build.webkit.org/#/builders/6">WPE
+    unified (regular) builder</a> and the <a href="https://build.webkit.org/#/builders/133">non-unified builder.</a></p>
+    <p>For simplicity, we only compare jobs that finished successfully in both builders among the last 200 jobs for each
+    builder.</p>
+    <p>Beware of other factors like artifacts caching or failed builds between successful runs that might make individual
+    build comparisons difficult.
+    </p>
+    <table>
+        <thead>
+            <tr>
+                <th>Started</th>
+                <th>Revision</th>
+                <th>Non-unified</th>
+                <th>Unified</th>
+                <th>Non-unified gap</th>
+                <th>Percentage</th>
+            </tr>
+        </thead>
+        <tbody>
+
+        </tbody>
+    </table>
+    <template id="resultTemplate">
+        <tr>
+            <td class="started"></td>
+            <td class="revision"></td>
+            <td class="nonunified result"></td>
+            <td class="unified result"></td>
+            <td class="gap"></td>
+            <td class="comparison"></td>
+        </tr>
+    </template>
+</body>
+</html>

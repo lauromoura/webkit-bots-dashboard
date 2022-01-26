@@ -91,3 +91,9 @@ export function formatRelativeDateFromNow(target, suffix=" ago", only_days=false
 
     return formatRelativeDate(target, utcSecondsSinceEpoch, suffix, only_days);
 }
+
+export function formatSeconds(seconds) {
+    let t = new Date(null);
+    t.setSeconds(seconds);
+    return t.toISOString().substr(11, 8);
+}
