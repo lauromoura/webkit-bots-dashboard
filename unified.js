@@ -87,10 +87,15 @@ window.onload = async () => {
         }
         gap_cell.innerText = prefix + utils.formatSeconds(gap);
 
-        let pct_cell = clone.querySelector(".comparison");
-        let pct = 100 * result.nonunified_duration / result.unified_duration;
-        pct = pct.toFixed(2);
-        pct_cell.innerText = pct.toString() + "%";
+        let mult_cell = clone.querySelector(".comparison");
+        let mult = result.nonunified_duration / result.unified_duration;
+        mult = mult.toFixed(2);
+        if (mult > 1) {
+            mult_cell.classList.add("slower");
+        } else if (mult < 1) {
+            mult_cell.classList.add("faster");
+        }
+        mult_cell.innerText = mult.toString() + "x";
 
         target.appendChild(clone);
     }

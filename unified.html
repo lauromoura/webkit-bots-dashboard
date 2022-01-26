@@ -45,6 +45,58 @@
         tbody tr td {
             text-align: center;
         }
+
+        .faster {
+            border-radius: 5px;
+            background-color: rgb(213, 255, 213);
+        }
+
+        .slower {
+            border-radius: 5px;
+            background-color: rgb(255, 205, 205);
+        }
+
+
+        @media only screen and (max-width: 1024px) {
+            table, thead, tbody, th, td, tr {
+                display: block;
+            }
+
+            thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+
+            tr { border: 1px solid #ccc; }
+
+            td {
+                /* Behave  like a "row" */
+                border: none;
+                border-bottom: 1px solid #eee;
+                position: relative;
+                padding-left: 50%;
+            }
+
+            td:before {
+                /* Now like a table header */
+                position: absolute;
+                left: 6px;
+                width: 45%;
+                padding-right: 10px;
+                white-space: nowrap;
+                text-align: left;
+            }
+
+            td:nth-of-type(1):before { content: "Started (localtime)"; }
+            td:nth-of-type(2):before { content: "Identifier"; }
+            td:nth-of-type(3):before { content: "Non-unified:"; }
+            td:nth-of-type(4):before { content: "Unified:"; }
+            td:nth-of-type(5):before { content: "Gap:"; }
+            td:nth-of-type(6):before { content: "Non-unified multiplier:"; }
+        }
+
+
     </style>
 </head>
 <body>
@@ -61,12 +113,12 @@
     <table>
         <thead>
             <tr>
-                <th>Started</th>
-                <th>Revision</th>
+                <th>Started (localtime)</th>
+                <th>Identifier</th>
                 <th>Non-unified</th>
                 <th>Unified</th>
-                <th>Non-unified gap</th>
-                <th>Percentage</th>
+                <th>Gap</th>
+                <th>Multiplier</th>
             </tr>
         </thead>
         <tbody>
@@ -83,5 +135,9 @@
             <td class="comparison"></td>
         </tr>
     </template>
+    <br>
+    <footer>
+        <a href="./index.html">Back to dashboard</a>
+    </footer>
 </body>
 </html>
