@@ -12,13 +12,49 @@ window.addEventListener('load', async e => {
 
     response.json().then(data => {
         console.log(`Found ${data.meta.total} bots`);
-        const wpeBots = data.builders.filter(utils.isWPE).sort((a, b) => a.name > b.name);
-        let buildList = document.querySelector("#wpe-builders-list > tbody");
-        displayBots(wpeBots, buildList);
 
-        const gtkBots = data.builders.filter(utils.isGTK).sort((a, b) => a.name > b.name);
-        buildList = document.querySelector("#gtk-builders-list > tbody");
-        displayBots(gtkBots, buildList);
+        const configurations = [
+            {
+                tableSelector: "#wpe-builders-list > tbody",
+                condition: (builder) => utils.isWPE(builder) && utils.isBuilder(builder),
+                bots: [],
+            },
+            {
+                tableSelector: "#wpe-testers-list > tbody",
+                condition: (builder) => utils.isWPE(builder) && utils.isTester(builder),
+                bots: [],
+            },
+            {
+                tableSelector: "#gtk-builders-list > tbody",
+                condition: (builder) => utils.isGTK(builder) && utils.isBuilder(builder),
+                bots: [],
+            },
+            {
+                tableSelector: "#gtk-testers-list > tbody",
+                condition: (builder) => utils.isGTK(builder) && utils.isTester(builder),
+                bots: [],
+            },
+            {
+                tableSelector: "#packaging-builders-list > tbody",
+                condition: (builder) => utils.isPackaging(builder),
+                bots: [],
+            },
+        ];
+
+        for (const builder of data.builders) {
+            for (const configuration of configurations) {
+                if (configuration.condition(builder)) {
+                    configuration.bots.push(builder);
+                }
+            }
+        }
+
+        for (const configuration of configurations) {
+            let buildList = document.querySelector(configuration.tableSelector);
+            displayBots(configuration.bots, buildList);
+        }
+
+        return;
     });
 
     {

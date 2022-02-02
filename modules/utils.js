@@ -21,6 +21,18 @@ export async function getLastBuild(builderId, number) {
     });
 }
 
+export function isBuilder(builder) {
+    return builder.tags.includes("Build");
+}
+
+export function isTester(builder) {
+    return builder.tags.includes("Tests");
+}
+
+export function isPackaging(builder) {
+    return builder.tags.includes("Packaging");
+}
+
 export function isWPE(builder) {
     return builder.tags.includes("WPE");
 }

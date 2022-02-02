@@ -76,7 +76,7 @@
 <body>
     <script type="module" src="./main.js"></script>
     <div id="header">
-        <h2>Old-school WPE/WebKitGTK/JSC buildbot dashboard</h2>
+        <h1>Old-school WPE/WebKitGTK/JSC buildbot dashboard</h1>
     </div>
     <div id="metadata">
         Last sync: <span id="timestamp"></span>
@@ -85,8 +85,24 @@
     <a class="linkButton" href="./charts.html">Test run charts</a>
     <a class="linkButton" href="./unified.html">Unified build timing</a>
     <div id="wpe-builders">
-        <h3>WPE post-commit bots</h3>
+        <h2>WPE post-commit bots</h2>
+        <h3>Builders</h3>
         <table id="wpe-builders-list">
+            <thead>
+                <tr>
+                    <th>Builder Name</th>
+                    <th>Current build</th>
+                    <th>Last build</th>
+                    <th>Finished</th>
+                    <th>Other builds</th>
+                    <th>Link to buildbot</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        <h3>Testers</h3>
+        <table id="wpe-testers-list">
             <thead>
                 <tr>
                     <th>Builder Name</th>
@@ -102,12 +118,46 @@
         </table>
     </div>
     <div id="gtk-builders">
-        <h3>GTK post-commit bots</h3>
+        <h2>GTK post-commit bots</h2>
+        <h3>Builders</h3>
         <table id="gtk-builders-list">
             <thead>
                 <tr>
                     <th>Builder Name</th>
-                    <th>Current Build</th>
+                    <th>Current build</th>
+                    <th>Last build</th>
+                    <th>Finished</th>
+                    <th>Other builds</th>
+                    <th>Link to buildbot</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        <h3>Testers</h3>
+        <table id="gtk-testers-list">
+            <thead>
+                <tr>
+                    <th>Builder Name</th>
+                    <th>Current build</th>
+                    <th>Last build</th>
+                    <th>Finished</th>
+                    <th>Other builds</th>
+                    <th>Link to buildbot</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+    <div id="packaging-builders">
+        <h2>Packaging post-commit bots</h2>
+        <h3>Builders</h3>
+        <table id="packaging-builders-list">
+            <thead>
+                <tr>
+                    <th>Builder Name</th>
+                    <th>Current build</th>
                     <th>Last build</th>
                     <th>Finished</th>
                     <th>Other builds</th>
