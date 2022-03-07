@@ -24,13 +24,16 @@ window.onload = async () => {
 
     let unified_data = await unified.json();
     let nonunified_data = await nonunified.json();
-    
+
     let unified_results = {};
+    // For stats later
+    let durations = []
     for (const build of unified_data.builds) {
         let revision = build.properties.identifier[0];
         let duration_seconds = build.complete_at - build.started_at;
         let current = {}
         current.duration = duration_seconds;
+        durations.push(duration_seconds);
         current.job = build.number;
         unified_results[revision] = current;
     }
@@ -99,4 +102,34 @@ window.onload = async () => {
 
         target.appendChild(clone);
     }
+
+    //Stats
+    let numberOfBuildsSpan = document.getElementById("numberOfBuilds");
+    numberOfBuildsSpan.innerText = `${durations.length}`;
+
+    let averageSpan = document.getElementById("averageDuration");
+    let average = durations.reduce((a, b) => a + b, 0)/durations.length;
+    averageSpan.innerText = `${utils.formatSeconds(average)}`;
+
+    let sorted = durations.sort((a,b) => a - b);
+
+    let percentile25Span = document.getElementById("percentile25");
+    let rank = Math.ceil(25 / 100 * sorted.length);
+    percentile25Span.innerText = `${utils.formatSeconds(sorted[rank])}`;
+
+    let percentile50Span = document.getElementById("percentile50");
+    rank = Math.ceil(50 / 100 * sorted.length);
+    percentile50Span.innerText = `${utils.formatSeconds(sorted[rank])}`;
+
+    let percentile75Span = document.getElementById("percentile75");
+    rank = Math.ceil(75 / 100 * sorted.length);
+    percentile75Span.innerText = `${utils.formatSeconds(sorted[rank])}`;
+
+    let percentile90Span = document.getElementById("percentile90");
+    rank = Math.ceil(90 / 100 * sorted.length);
+    percentile90Span.innerText = `${utils.formatSeconds(sorted[rank])}`;
+
+    let percentile95Span = document.getElementById("percentile95");
+    rank = Math.ceil(95 / 100 * sorted.length);
+    percentile95Span.innerText = `${utils.formatSeconds(sorted[rank])}`;
 };
