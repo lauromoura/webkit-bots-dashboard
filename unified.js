@@ -1,6 +1,6 @@
 import * as utils from "./modules/utils.js";
 
-let API = "https://build.webkit.org/api/v2/builders/{}/builds?property=identifier&limit=100&order=-number&complete=1&results=0";
+let API = "https://build.webkit.org/api/v2/builders/{}/builds?property=identifier&limit=300&order=-number&complete=1&results=0";
 
 
 function buildLink(builder, job) {
