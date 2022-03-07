@@ -33,7 +33,6 @@ window.onload = async () => {
         let duration_seconds = build.complete_at - build.started_at;
         let current = {}
         current.duration = duration_seconds;
-        durations.push(duration_seconds);
         current.job = build.number;
         unified_results[revision] = current;
     }
@@ -42,6 +41,7 @@ window.onload = async () => {
     for (const build of nonunified_data.builds) {
         let revision = build.properties.identifier[0];
         let duration_seconds = build.complete_at - build.started_at;
+        durations.push(duration_seconds);
         if (revision in unified_results) {
             let current = {}
             current.started = build.started_at;
