@@ -108,35 +108,9 @@
     <p>For simplicity, we only compare jobs that finished successfully in both builders among the last 300 jobs for each
     builder.</p>
     <p>Beware of other factors like artifacts caching or failed builds between successful runs that might make individual
-    build comparisons difficult.
-    </p>
-    <table>
-        <thead>
-            <tr>
-                <th>Started (localtime)</th>
-                <th>Identifier</th>
-                <th>Non-unified</th>
-                <th>Unified</th>
-                <th>Gap</th>
-                <th>Multiplier</th>
-            </tr>
-        </thead>
-        <tbody>
+    build comparisons difficult.</p>
 
-        </tbody>
-    </table>
-    <template id="resultTemplate">
-        <tr>
-            <td class="started"></td>
-            <td class="revision"></td>
-            <td class="nonunified result"></td>
-            <td class="unified result"></td>
-            <td class="gap"></td>
-            <td class="comparison"></td>
-        </tr>
-    </template>
-    <br>
-    <h3>Non-unified stats</h3>
+    <h3>Overall stats</h3>
     <p>About percentiles: The "0.75 percentile" value could be read as "75% of the builds take at
     most this time".</p>
 
@@ -181,6 +155,35 @@
             </tr>
         </tbody>
     </table>
+
+    <h3>Results by revision</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Started (localtime)</th>
+                <th>Identifier</th>
+                <th>Non-unified</th>
+                <th>Unified</th>
+                <th>Gap</th>
+                <th>Multiplier</th>
+            </tr>
+        </thead>
+        <tbody id="buildsTable">
+
+        </tbody>
+    </table>
+    <template id="resultTemplate">
+        <tr>
+            <td class="started"></td>
+            <td class="revision"></td>
+            <td class="nonunified result"></td>
+            <td class="unified result"></td>
+            <td class="gap"></td>
+            <td class="comparison"></td>
+        </tr>
+    </template>
+    <br>
+
     <footer>
         <a href="./index.html">Back to dashboard</a>
     </footer>

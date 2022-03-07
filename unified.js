@@ -57,7 +57,7 @@ window.onload = async () => {
             common_results.push(current);
         }
     }
-    const target = document.querySelector("table > tbody");
+    const target = document.getElementById("buildsTable");
     const template = document.getElementById("resultTemplate");
     for (const result of common_results) {
         let clone = template.content.firstElementChild.cloneNode(true);
