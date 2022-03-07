@@ -37,17 +37,20 @@ window.onload = async () => {
         unified_results[revision] = current;
     }
 
-    let common_results = []
+    let common_results = [];
+    let non_unified_durations = [];
+    let unified_durations = [];
     for (const build of nonunified_data.builds) {
         let revision = build.properties.identifier[0];
         let duration_seconds = build.complete_at - build.started_at;
-        durations.push(duration_seconds);
         if (revision in unified_results) {
             let current = {}
             current.started = build.started_at;
             current.nonunified_duration = duration_seconds;
+            non_unified_durations.push(duration_seconds);
             current.nonunified_job = build.number;
             current.unified_duration = unified_results[revision].duration;
+            unified_durations.push(unified_results[revision].duration);
             current.unified_job = unified_results[revision].job;
             current.gap = current.nonunified_duration - current.unified_duration;
             current.revision = revision;
@@ -104,32 +107,45 @@ window.onload = async () => {
     }
 
     //Stats
-    let numberOfBuildsSpan = document.getElementById("numberOfBuilds");
-    numberOfBuildsSpan.innerText = `${durations.length}`;
+    let numBuildsNonUnified = document.getElementById("numBuildsNonUnified");
+    let numBuildsUnified = document.getElementById("numBuildsUnified");
+    numBuildsUnified.innerText = `${unified_durations.length}`;
+    numBuildsNonUnified.innerText = `${non_unified_durations.length}`;
 
-    let averageSpan = document.getElementById("averageDuration");
-    let average = durations.reduce((a, b) => a + b, 0)/durations.length;
-    averageSpan.innerText = `${utils.formatSeconds(average)}`;
+    let averageUnifiedCell = document.getElementById("averageUnified");
+    let averageNonUnifiedCell = document.getElementById("averageNonUnified");
 
-    let sorted = durations.sort((a,b) => a - b);
+    let averageUnified = unified_durations.reduce((a,b) => a + b, 0)/unified_durations.length;
+    let averageNonUnified = non_unified_durations.reduce((a,b) => a + b, 0)/non_unified_durations.length;
 
-    let percentile25Span = document.getElementById("percentile25");
-    let rank = Math.ceil(25 / 100 * sorted.length);
-    percentile25Span.innerText = `${utils.formatSeconds(sorted[rank])}`;
+    averageUnifiedCell.innerText = `${utils.formatSeconds(averageUnified)}`;
+    averageNonUnifiedCell.innerText = `${utils.formatSeconds(averageNonUnified)}`;
 
-    let percentile50Span = document.getElementById("percentile50");
-    rank = Math.ceil(50 / 100 * sorted.length);
-    percentile50Span.innerText = `${utils.formatSeconds(sorted[rank])}`;
+    unified_durations = unified_durations.sort((a,b) => a - b);
+    non_unified_durations = non_unified_durations.sort((a,b) => a - b);
 
-    let percentile75Span = document.getElementById("percentile75");
-    rank = Math.ceil(75 / 100 * sorted.length);
-    percentile75Span.innerText = `${utils.formatSeconds(sorted[rank])}`;
+    let pct25UnifiedCell = document.getElementById("pct25Unified");
+    let pct25NonUnifiedCell = document.getElementById("pct25NonUnified");
 
-    let percentile90Span = document.getElementById("percentile90");
-    rank = Math.ceil(90 / 100 * sorted.length);
-    percentile90Span.innerText = `${utils.formatSeconds(sorted[rank])}`;
+    let rank = Math.ceil(25 / 100 * unified_durations.length);
+    pct25UnifiedCell.innerText = `${utils.formatSeconds(unified_durations[rank])}`;
+    pct25NonUnifiedCell.innerText = `${utils.formatSeconds(non_unified_durations[rank])}`;
 
-    let percentile95Span = document.getElementById("percentile95");
-    rank = Math.ceil(95 / 100 * sorted.length);
-    percentile95Span.innerText = `${utils.formatSeconds(sorted[rank])}`;
+    let pct50UnifiedCell = document.getElementById("pct50Unified");
+    let pct50NonUnifiedCell = document.getElementById("pct50NonUnified");
+    rank = Math.ceil(50 / 100 * unified_durations.length);
+    pct50UnifiedCell.innerText = `${utils.formatSeconds(unified_durations[rank])}`;
+    pct50NonUnifiedCell.innerText = `${utils.formatSeconds(non_unified_durations[rank])}`;
+
+    let pct75UnifiedCell = document.getElementById("pct75Unified");
+    let pct75NonUnifiedCell = document.getElementById("pct75NonUnified");
+    rank = Math.ceil(75 / 100 * unified_durations.length);
+    pct75UnifiedCell.innerText = `${utils.formatSeconds(unified_durations[rank])}`;
+    pct75NonUnifiedCell.innerText = `${utils.formatSeconds(non_unified_durations[rank])}`;
+
+    let pct90UnifiedCell = document.getElementById("pct90Unified");
+    let pct90NonUnifiedCell = document.getElementById("pct90NonUnified");
+    rank = Math.ceil(90 / 100 * unified_durations.length);
+    pct90UnifiedCell.innerText = `${utils.formatSeconds(unified_durations[rank])}`;
+    pct90NonUnifiedCell.innerText = `${utils.formatSeconds(non_unified_durations[rank])}`;
 };

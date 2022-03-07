@@ -139,15 +139,48 @@
     <h3>Non-unified stats</h3>
     <p>About percentiles: The "0.75 percentile" value could be read as "75% of the builds take at
     most this time".</p>
-    <ul>
-        <li>Number of builds: <span id="numberOfBuilds"></span></li>
-        <li>Average time: <span id="averageDuration"></span></li>
-        <li>0.25 percentile: <span id="percentile25"></span></li>
-        <li>0.50 percentile: <span id="percentile50"></span></li>
-        <li>0.75 percentile: <span id="percentile75"></span></li>
-        <li>0.90 percentile: <span id="percentile90"></span></li>
-        <li>0.95 percentile: <span id="percentile95"></span></li>
-    </ul>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Non-unified build</th>
+                <th>Unified build</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Number of builds</td>
+                <td id="numBuildsNonUnified"></td>
+                <td id="numBuildsUnified"></td>
+            </tr>
+            <tr>
+                <td>Average time</td>
+                <td id="averageNonUnified"></td>
+                <td id="averageUnified"></td>
+            </tr>
+            <tr>
+                <td>.25 percentile</td>
+                <td id="pct25NonUnified"></td>
+                <td id="pct25Unified"></td>
+            </tr>
+            <tr>
+                <td>.50 percentile</td>
+                <td id="pct50NonUnified"></td>
+                <td id="pct50Unified"></td>
+            </tr>
+            <tr>
+                <td>.75 percentile</td>
+                <td id="pct75NonUnified"></td>
+                <td id="pct75Unified"></td>
+            </tr>
+            <tr>
+                <td>.90 percentile</td>
+                <td id="pct90NonUnified"></td>
+                <td id="pct90Unified"></td>
+            </tr>
+        </tbody>
+    </table>
     <footer>
         <a href="./index.html">Back to dashboard</a>
     </footer>
