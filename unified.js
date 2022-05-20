@@ -50,7 +50,8 @@ window.onload = async () => {
             non_unified_durations.push(duration_seconds);
             current.nonunified_job = build.number;
             current.unified_duration = unified_results[revision].duration;
-            unified_durations.push(unified_results[revision].duration);
+            current.unified_duration -= 60 * 4 + 10;
+            unified_durations.push(current.unified_duration);
             current.unified_job = unified_results[revision].job;
             current.gap = current.nonunified_duration - current.unified_duration;
             current.revision = revision;

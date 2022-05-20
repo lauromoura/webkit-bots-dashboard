@@ -104,9 +104,10 @@
     <h1>Non unified vs unified build times comparison</h1>
     <br>
     <p>This is a simple comparison of the build times between the <a href="https://build.webkit.org/#/builders/6">WPE
-    unified (regular) builder</a> and the <a href="https://build.webkit.org/#/builders/133">non-unified builder.</a></p>
+            unified (regular) builder</a> and the <a href="https://build.webkit.org/#/builders/133">non-unified builder</a>. It is not intended as a scientific benchmark, but just a rough estimation of the time required for non-unified builds.</p>
     <p>For simplicity, we only compare jobs that finished successfully in both builders among the last 300 jobs for each
-    builder.</p>
+    builder. Also, 4 minutes and 10 seconds are discounted from the unified builder time to account for uploading the build products.</p>
+
     <p>Beware of other factors like artifacts caching or failed builds between successful runs that might make individual
     build comparisons difficult.</p>
 
