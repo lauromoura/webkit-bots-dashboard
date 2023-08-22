@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="120">
+    <title>WebKit Bots Dashboard - Tiered view</title>
+    <link rel="icon" href="data:,">
+    <link rel="manifest" href="./manifest.json">
+    <style>
+        body {
+            font-size: 12px;
+            font-family: sans-serif;
+        }
+
+        table {
+            table-layout: fixed;
+            width: 100%;
+            border-collapse: collapse;
+            border: 3px solid gray;
+        }
+        thead {
+            text-align: center;
+            background-color: lightgrey;
+        }
+        thead th:nth-child(4) {
+            width: 10%;
+        }
+        tbody tr:nth-child(odd) {
+            background-color: white;
+        }
+        tbody tr:nth-child(even) {
+            background-color: rgb(243, 243, 243);
+        }
+
+        .buildTime {
+            text-align: right;
+            padding-right: 2px;
+        }
+
+        .success {
+            border-radius: 5px;
+            background-color: lightgreen;
+        }
+
+        .failure {
+            border-radius: 5px;
+            background-color: pink;
+        }
+
+        .building {
+            border-radius: 10px;
+            background-color: yellow;
+        }
+
+        .otherBuilds > ul {
+            list-style: none;
+        }
+
+        .otherBuilds > ul > li {
+            display: inline;
+            padding: 5px;
+            border-radius: 5px;
+            margin: 2px;
+        }
+
+        .linkButton {
+            color: white;
+            background-color: #13a4a4;
+            font-size: 16px;
+            padding: 5px;
+            border-radius: 2px;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <script type="module" src="./monitor.js"></script>
+    <div id="header">
+        <h1>Tiered webkit bots dashboard</h1>
+    </div>
+    <div id="metadata">
+        Last sync: <span id="timestamp"></span>
+    </div>
+    <br>
+    <a class="linkButton" href="./index.html"><b>Regular view</b></a>
+    <a class="linkButton" href="./charts.html">Test run charts</a>
+    <a class="linkButton" href="./unified.html">Unified build timing</a>
+    <!-- 
+        Tier 1 - Release build bots - MUST BE GREEN
+    -->
+    <div id="tier1">
+        <h2>Tier 1 bots - Release builders - Must be green</h2>
+        <table id="release-builders-list">
+            <thead>
+                <tr>
+                    <th>Builder Name</th>
+                    <th>Current build</th>
+                    <th>Last build</th>
+                    <th>Finished</th>
+                    <th>Other builds</th>
+                    <th>Link to buildbot</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 
+        Tier 2 - Release test bots - Must not exit early
+    -->
+    <div id="tier2">
+        <h2>Tier 2 bots - Release test bots - Must not exit early</h2>
+        <table id="release-testers-list">
+            <thead>
+                <tr>
+                    <th>Builder Name</th>
+                    <th>Current build</th>
+                    <th>Last build</th>
+                    <th>Finished</th>
+                    <th>Other builds</th>
+                    <th>Link to buildbot</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 
+        Tier 3 - Debug build bots must be green
+    -->
+    <div id="tier3">
+        <h2>Tier 3 bots - Debug builders - Must be green</h2>
+        <table id="debug-builders-list">
+            <thead>
+                <tr>
+                    <th>Builder Name</th>
+                    <th>Current build</th>
+                    <th>Last build</th>
+                    <th>Finished</th>
+                    <th>Other builds</th>
+                    <th>Link to buildbot</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+    <!--
+        Tier 4 - Check Release test bots time limit
+    -->
+    <div id="tier4">
+        <h2>Tier 4 bots - Release test bot time limit</h2>
+        <h3>WPE main Release tester</h3>
+        <table id="wpe-release-tester-timelimit-list">
+            <thead>
+                <tr>
+                    <th>Job number</th>
+                    <th>Summary</th>
+                    <th>Revision</th>
+                    <th>Finished</th>
+                    <th>Duration</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+
+        <h3>GTK main Release tester</h3>
+        <table id="gtk-release-tester-timelimit-list">
+            <thead>
+                <tr>
+                    <th>Job number</th>
+                    <th>Summary</th>
+                    <th>Revision</th>
+                    <th>Finished</th>
+                    <th>Duration</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+    <!--
+        Tier 5 - Ubuntu Stable / Debian bots must be green
+    -->
+    <div id="tier5">
+        <h2>Tier 5 bots - Stable/LTS must be green</h2>
+        <table id="stable-builders-list">
+            <thead>
+                <tr>
+                    <th>Builder Name</th>
+                    <th>Current build</th>
+                    <th>Last build</th>
+                    <th>Finished</th>
+                    <th>Other builds</th>
+                    <th>Link to buildbot</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+    <!--
+        Tier 6 - Other bots
+    -->
+    <div id="tier6">
+        <h2>Tier 6 bots - Remaining bots</h2>
+        <table id="low-priority-list">
+            <thead>
+                <tr>
+                    <th>Builder Name</th>
+                    <th>Current build</th>
+                    <th>Last build</th>
+                    <th>Finished</th>
+                    <th>Other builds</th>
+                    <th>Link to buildbot</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+    <div id=builds">
+        <table id="builds-list">
+        </table>
+    </div>
+    <template id=builderListEntry>
+        <tr>
+            <td class="builderName"></td>
+            <td class="currentBuild"></td>
+            <td class="lastBuild"></td>
+            <td class="buildTime"></td>
+            <td class="otherBuilds"></td>
+            <td class="externalLink"></td>
+        </tr>
+    </template>
+    <template id=timeLimitListEntry>
+        <tr>
+            <td class="jobNumber"></td>
+            <td class="jobSummary"></td>
+            <td class="jobRevision"></td>
+            <td class="jobFinished"></td>
+            <td class="jobDuration"></td>
+        </tr>
+    </template>
+</body>
+</html>
+

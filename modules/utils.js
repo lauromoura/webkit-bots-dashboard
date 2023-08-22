@@ -41,6 +41,133 @@ export function isGTK(builder) {
     return builder.tags.includes("GTK");
 }
 
+export function isRelease(builder) {
+    return builder.tags.includes("Release");
+}
+
+export function isDebug(builder) {
+    return builder.tags.includes("Debug");
+}
+
+export function isStable(builder) {
+    return builder.tags.includes("Ubuntu") || builder.tags.includes("Debian");
+}
+
+export function isNonUnified(builder) {
+    // buildbot parses "Non-Unified" to "Non" and "Unified" tags
+    return builder.tags.includes("Unified");
+}
+
+export function isPerf(builder) {
+    return builder.tags.includes("Perf");
+}
+
+export function isWebDriver(builder) {
+    return builder.tags.includes("WebDriver");
+}
+
+export function isJSTest(builder) {
+    return builder.tags.includes("JS");
+}
+
+export function isGTK4(builder) {
+    return builder.tags.includes("GTK4");
+}
+
+export function isWayland(builder) {
+    return builder.tags.includes("Wayland");
+}
+
+export function isSkipFailing(builder) {
+    return builder.tags.includes("Skip") && builder.tags.includes("Failing");
+}
+
+export function isTier1(builder) {
+    if (isNonUnified(builder))
+        return false;
+
+    if (isStable(builder))
+        return false;
+
+    if (isPerf(builder))
+        return false;
+
+    if (!isRelease(builder))
+        return false;
+
+    if (!isBuilder(builder))
+        return false
+
+    return isWPE(builder) || isGTK(builder);
+}
+
+export function isTier2(builder) {
+
+    if (!isRelease(builder))
+        return false;
+
+    if (!isTester(builder))
+        return false
+
+    if (isNonUnified(builder))
+        return false;
+
+    if (isGTK4(builder) || isWayland(builder)) {
+        return false;
+    }
+
+    if (isStable(builder))
+        return false;
+
+    if (isPerf(builder))
+        return false;
+
+    if (isWebDriver(builder))
+        return false;
+
+    if (isJSTest(builder))
+        return false;
+
+
+    return isWPE(builder) || isGTK(builder);
+}
+
+export function isTier3(builder) {
+    if (isNonUnified(builder))
+        return false;
+
+    if (isStable(builder))
+        return false;
+
+    if (isPerf(builder))
+        return false;
+
+    if (!isDebug(builder))
+        return false;
+
+    if (!isBuilder(builder))
+        return false
+
+    return isWPE(builder) || isGTK(builder);
+}
+
+export function isTier5(builder) {
+    if (!isBuilder(builder))
+        return false;
+
+    if (!isStable(builder))
+        return false;
+
+    return isWPE(builder) || isGTK(builder);
+}
+
+export function isLowTier(builder) {
+    if (!(isWPE(builder) || isGTK(builder)))
+        return false;
+
+    return !(isTier1(builder) || isTier2(builder) || isTier3(builder) || isTier5(builder));
+}
+
 export function createLinkFor(href, text) {
     let link = document.createElement("a");
     link.setAttribute("href", href);
