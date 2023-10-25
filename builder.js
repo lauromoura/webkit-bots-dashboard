@@ -57,10 +57,14 @@ window.addEventListener('load', async e => {
             started_cell.innerText = started;
 
             let identifier_cell = clone.querySelector('.jobIdentifier');
-            let identifier = element.properties.identifier[0];
-            let identifierURL = `https://commits.webkit.org/${identifier}`;
-            let identifierLink = utils.createLinkFor(identifierURL, identifier);
-            identifier_cell.appendChild(identifierLink);
+            if (element.properties.hasOwnProperty("identifier")) {
+                let identifier = element.properties.identifier[0];
+                let identifierURL = `https://commits.webkit.org/${identifier}`;
+                let identifierLink = utils.createLinkFor(identifierURL, identifier);
+                identifier_cell.appendChild(identifierLink);
+            } else {
+                identifier_cell.textContent = "unknown identifier";
+            }
 
             let duration_cell = clone.querySelector('.jobDuration');
             if (element.complete) {
