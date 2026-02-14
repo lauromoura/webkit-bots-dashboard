@@ -15,23 +15,18 @@ window.addEventListener('load', async e => {
 
         const configurations = [
             {
-                tableSelector: "#release-builders-list > tbody",
+                tableSelector: "#builders-list > tbody",
                 condition: utils.isTier1,
                 bots: [],
             },
             {
-                tableSelector: "#release-testers-list > tbody",
+                tableSelector: "#testers-list > tbody",
                 condition: utils.isTier2,
                 bots: [],
             },
             {
-                tableSelector: "#debug-builders-list > tbody",
-                condition: utils.isTier3,
-                bots: [],
-            },
-            {
                 tableSelector: "#stable-builders-list > tbody",
-                condition: utils.isTier5,
+                condition: utils.isTier4,
                 bots: [],
             },
             {

@@ -92,11 +92,8 @@ export function isTier1(builder) {
     if (isPerf(builder))
         return false;
 
-    if (!isRelease(builder))
-        return false;
-
     if (!isBuilder(builder))
-        return false
+        return false;
 
     return isWPE(builder) || isGTK(builder);
 }
@@ -125,33 +122,10 @@ export function isTier2(builder) {
     if (isWebDriver(builder))
         return false;
 
-    if (isJSTest(builder))
-        return false;
-
-
     return isWPE(builder) || isGTK(builder);
 }
 
-export function isTier3(builder) {
-    if (isNonUnified(builder))
-        return false;
-
-    if (isStable(builder))
-        return false;
-
-    if (isPerf(builder))
-        return false;
-
-    if (!isDebug(builder))
-        return false;
-
-    if (!isBuilder(builder))
-        return false
-
-    return isWPE(builder) || isGTK(builder);
-}
-
-export function isTier5(builder) {
+export function isTier4(builder) {
     if (!isBuilder(builder))
         return false;
 
@@ -165,7 +139,7 @@ export function isLowTier(builder) {
     if (!(isWPE(builder) || isGTK(builder)))
         return false;
 
-    return !(isTier1(builder) || isTier2(builder) || isTier3(builder) || isTier5(builder));
+    return !(isTier1(builder) || isTier2(builder) || isTier4(builder));
 }
 
 export function createLinkFor(href, text) {

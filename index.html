@@ -85,54 +85,12 @@
     <a class="linkButton" href="./all-builders.html"><b>All builders</b></a>
     <a class="linkButton" href="./charts.html">Test run charts</a>
     <a class="linkButton" href="./unified.html">Unified build timing</a>
-    <!-- 
-        Tier 1 - Release build bots - MUST BE GREEN
+    <!--
+        Tier 1 - Build bots - MUST BE GREEN
     -->
     <div id="tier1">
-        <h2>Tier 1 bots - Release builders - Must be green</h2>
-        <table id="release-builders-list">
-            <thead>
-                <tr>
-                    <th>Builder Name</th>
-                    <th>Current build</th>
-                    <th>Last build</th>
-                    <th>Finished</th>
-                    <th>Other builds</th>
-                    <th>Link to buildbot</th>
-                </tr>
-            </thead>
-            <tbody>
-            </tbody>
-        </table>
-    </div>
-
-    <!-- 
-        Tier 2 - Release test bots - Must not exit early
-    -->
-    <div id="tier2">
-        <h2>Tier 2 bots - Release test bots - Must not exit early</h2>
-        <table id="release-testers-list">
-            <thead>
-                <tr>
-                    <th>Builder Name</th>
-                    <th>Current build</th>
-                    <th>Last build</th>
-                    <th>Finished</th>
-                    <th>Other builds</th>
-                    <th>Link to buildbot</th>
-                </tr>
-            </thead>
-            <tbody>
-            </tbody>
-        </table>
-    </div>
-
-    <!-- 
-        Tier 3 - Debug build bots must be green
-    -->
-    <div id="tier3">
-        <h2>Tier 3 bots - Debug builders - Must be green</h2>
-        <table id="debug-builders-list">
+        <h2>Tier 1 bots - Builders - Must be green</h2>
+        <table id="builders-list">
             <thead>
                 <tr>
                     <th>Builder Name</th>
@@ -149,10 +107,31 @@
     </div>
 
     <!--
-        Tier 4 - Check Release test bots time limit
+        Tier 2 - Test bots - Must not exit early
     -->
-    <div id="tier4">
-        <h2>Tier 4 bots - Release test bot time limit</h2>
+    <div id="tier2">
+        <h2>Tier 2 bots - Test bots - Must not exit early</h2>
+        <table id="testers-list">
+            <thead>
+                <tr>
+                    <th>Builder Name</th>
+                    <th>Current build</th>
+                    <th>Last build</th>
+                    <th>Finished</th>
+                    <th>Other builds</th>
+                    <th>Link to buildbot</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+    <!--
+        Tier 3 - Check Release test bots time limit
+    -->
+    <div id="tier3">
+        <h2>Tier 3 bots - Release test bot time limit</h2>
         <h3>WPE main Release tester</h3>
         <table id="wpe-release-tester-timelimit-list">
             <thead>
@@ -185,10 +164,10 @@
     </div>
 
     <!--
-        Tier 5 - Ubuntu Stable / Debian bots must be green
+        Tier 4 - Ubuntu Stable / Debian bots must be green
     -->
-    <div id="tier5">
-        <h2>Tier 5 bots - Stable/LTS must be green</h2>
+    <div id="tier4">
+        <h2>Tier 4 bots - Stable/LTS must be green</h2>
         <table id="stable-builders-list">
             <thead>
                 <tr>
@@ -206,10 +185,10 @@
     </div>
 
     <!--
-        Tier 6 - Other bots
+        Tier 5 - Other bots
     -->
-    <div id="tier6">
-        <h2>Tier 6 bots - Remaining bots</h2>
+    <div id="tier5">
+        <h2>Tier 5 bots - Remaining bots</h2>
         <table id="low-priority-list">
             <thead>
                 <tr>
