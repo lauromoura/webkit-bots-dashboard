@@ -15,28 +15,28 @@ window.addEventListener('load', async e => {
 
         const configurations = [
             {
-                tableSelector: "#release-builders-list > tbody",
-                condition: utils.isTier1,
+                tableSelector: "#wpe-builders-list > tbody",
+                condition: (builder) => utils.isWPE(builder) && utils.isBuilder(builder),
                 bots: [],
             },
             {
-                tableSelector: "#release-testers-list > tbody",
-                condition: utils.isTier2,
+                tableSelector: "#wpe-testers-list > tbody",
+                condition: (builder) => utils.isWPE(builder) && utils.isTester(builder),
                 bots: [],
             },
             {
-                tableSelector: "#debug-builders-list > tbody",
-                condition: utils.isTier3,
+                tableSelector: "#gtk-builders-list > tbody",
+                condition: (builder) => utils.isGTK(builder) && utils.isBuilder(builder),
                 bots: [],
             },
             {
-                tableSelector: "#stable-builders-list > tbody",
-                condition: utils.isTier5,
+                tableSelector: "#gtk-testers-list > tbody",
+                condition: (builder) => utils.isGTK(builder) && utils.isTester(builder),
                 bots: [],
             },
             {
-                tableSelector: "#low-priority-list > tbody",
-                condition: utils.isLowTier,
+                tableSelector: "#packaging-builders-list > tbody",
+                condition: (builder) => utils.isPackaging(builder),
                 bots: [],
             },
         ];
@@ -53,20 +53,6 @@ window.addEventListener('load', async e => {
             let buildList = document.querySelector(configuration.tableSelector);
             displayBots(configuration.bots, buildList);
         }
-
-        // time limit
-        let wpeTimeLimitTable = document.querySelector("#wpe-release-tester-timelimit-list > tbody")
-        let wpeReleaseBot = data.builders.find((bot) => {
-            return utils.isWPE(bot) && utils.isTier2(bot);
-        });
-        displayTimeLimit(wpeReleaseBot, wpeTimeLimitTable);
-
-        let gtkTimeLimitTable = document.querySelector("#gtk-release-tester-timelimit-list > tbody")
-        let gtkReleaseBot = data.builders.find((bot) => {
-            return utils.isGTK(bot) && utils.isTier2(bot) && !utils.isSkipFailing(bot);
-        });
-        displayTimeLimit(gtkReleaseBot, gtkTimeLimitTable);
-
 
         return;
     });
@@ -102,9 +88,6 @@ function displayLastBuild(builderId, target) {
             return;
 
         let build = data.builds.shift();
-
-        if (build === undefined)
-            return;
 
         {
             let cell = target.querySelector(".currentBuild");
@@ -145,11 +128,11 @@ function displayLastBuild(builderId, target) {
 
         {
             let cell = target.querySelector(".buildTime");
+            let date = new Date(0);
+            date.setUTCSeconds(build.complete_at);
             let date_str = utils.formatRelativeDateFromNow(build.complete_at);
 
-            let duration_str = utils.formatRelativeDate(build.started_at, build.complete_at, "");
-            cell.textContent = `${date_str} (duration: ${duration_str})`;
-
+            cell.textContent = date_str;
         }
 
         {
@@ -169,49 +152,6 @@ function displayLastBuild(builderId, target) {
                 ul.appendChild(li);
             }
             cell.appendChild(ul);
-        }
-    });
-}
-
-function displayTimeLimit(builder, targetList) {
-    utils.getLastBuild(builder.builderid, 5).then(data => {
-        for (const build of data.builds) {
-            let template = document.getElementById("timeLimitListEntry");
-            let clone = template.content.firstElementChild.cloneNode(true);
-            {
-                let number = clone.querySelector(".jobNumber");
-                number.innerHTML = `${build.number}`;
-            }
-            {
-                let summary = clone.querySelector(".jobSummary");
-                if (build.state_string == "build successful") {
-                    summary.className += " success";
-                } else if (build.state_string != "building") {
-                    summary.className += " failure";
-                }
-                summary.innerHTML = `${build.state_string}`;
-            }
-            {
-                let finished = clone.querySelector(".jobFinished");
-                if (build.complete) {
-                    let date_str = utils.formatRelativeDateFromNow(build.complete_at);
-                    finished.textContent = `${date_str}`;
-                }
-                else {
-                    finished.textContent = "...";
-                }
-            }
-            {
-                let duration = clone.querySelector(".jobDuration");
-                if (build.complete) {
-                    let duration_str = utils.formatRelativeDate(build.started_at, build.complete_at, "");
-                    duration.textContent = `${duration_str}`;
-                } else {
-                    let date_str = utils.formatRelativeDateFromNow(build.started_at);
-                    duration.textContent = `${date_str}`;
-                }
-            }
-            targetList.appendChild(clone);
         }
     });
 }

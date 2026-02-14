@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="refresh" content="120">
-    <title>WebKit Bots Dashboard - Tiered view</title>
+    <title>WebKit Bots Dashboard - Overview</title>
     <link rel="icon" href="data:,">
     <link rel="manifest" href="./manifest.json">
     <style>
@@ -74,23 +74,36 @@
     </style>
 </head>
 <body>
-    <script type="module" src="./main.js"></script>
+    <script type="module" src="./all-builders.js"></script>
     <div id="header">
-        <h1>Tiered webkit bots dashboard</h1>
+        <h1>Old-school WPE/WebKitGTK/JSC buildbot dashboard</h1>
     </div>
     <div id="metadata">
         Last sync: <span id="timestamp"></span>
     </div>
     <br>
-    <a class="linkButton" href="./all-builders.html"><b>All builders</b></a>
+    <a class="linkButton" href="./index.html"><b>Tiered view</b></a>
     <a class="linkButton" href="./charts.html">Test run charts</a>
     <a class="linkButton" href="./unified.html">Unified build timing</a>
-    <!-- 
-        Tier 1 - Release build bots - MUST BE GREEN
-    -->
-    <div id="tier1">
-        <h2>Tier 1 bots - Release builders - Must be green</h2>
-        <table id="release-builders-list">
+    <div id="wpe-builders">
+        <h2>WPE post-commit bots</h2>
+        <h3>Builders</h3>
+        <table id="wpe-builders-list">
+            <thead>
+                <tr>
+                    <th>Builder Name</th>
+                    <th>Current build</th>
+                    <th>Last build</th>
+                    <th>Finished</th>
+                    <th>Other builds</th>
+                    <th>Link to buildbot</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        <h3>Testers</h3>
+        <table id="wpe-testers-list">
             <thead>
                 <tr>
                     <th>Builder Name</th>
@@ -105,13 +118,25 @@
             </tbody>
         </table>
     </div>
-
-    <!-- 
-        Tier 2 - Release test bots - Must not exit early
-    -->
-    <div id="tier2">
-        <h2>Tier 2 bots - Release test bots - Must not exit early</h2>
-        <table id="release-testers-list">
+    <div id="gtk-builders">
+        <h2>GTK post-commit bots</h2>
+        <h3>Builders</h3>
+        <table id="gtk-builders-list">
+            <thead>
+                <tr>
+                    <th>Builder Name</th>
+                    <th>Current build</th>
+                    <th>Last build</th>
+                    <th>Finished</th>
+                    <th>Other builds</th>
+                    <th>Link to buildbot</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        <h3>Testers</h3>
+        <table id="gtk-testers-list">
             <thead>
                 <tr>
                     <th>Builder Name</th>
@@ -126,91 +151,10 @@
             </tbody>
         </table>
     </div>
-
-    <!-- 
-        Tier 3 - Debug build bots must be green
-    -->
-    <div id="tier3">
-        <h2>Tier 3 bots - Debug builders - Must be green</h2>
-        <table id="debug-builders-list">
-            <thead>
-                <tr>
-                    <th>Builder Name</th>
-                    <th>Current build</th>
-                    <th>Last build</th>
-                    <th>Finished</th>
-                    <th>Other builds</th>
-                    <th>Link to buildbot</th>
-                </tr>
-            </thead>
-            <tbody>
-            </tbody>
-        </table>
-    </div>
-
-    <!--
-        Tier 4 - Check Release test bots time limit
-    -->
-    <div id="tier4">
-        <h2>Tier 4 bots - Release test bot time limit</h2>
-        <h3>WPE main Release tester</h3>
-        <table id="wpe-release-tester-timelimit-list">
-            <thead>
-                <tr>
-                    <th>Job number</th>
-                    <th>Summary</th>
-                    <th>Revision</th>
-                    <th>Finished</th>
-                    <th>Duration</th>
-                </tr>
-            </thead>
-            <tbody>
-            </tbody>
-        </table>
-
-        <h3>GTK main Release tester</h3>
-        <table id="gtk-release-tester-timelimit-list">
-            <thead>
-                <tr>
-                    <th>Job number</th>
-                    <th>Summary</th>
-                    <th>Revision</th>
-                    <th>Finished</th>
-                    <th>Duration</th>
-                </tr>
-            </thead>
-            <tbody>
-            </tbody>
-        </table>
-    </div>
-
-    <!--
-        Tier 5 - Ubuntu Stable / Debian bots must be green
-    -->
-    <div id="tier5">
-        <h2>Tier 5 bots - Stable/LTS must be green</h2>
-        <table id="stable-builders-list">
-            <thead>
-                <tr>
-                    <th>Builder Name</th>
-                    <th>Current build</th>
-                    <th>Last build</th>
-                    <th>Finished</th>
-                    <th>Other builds</th>
-                    <th>Link to buildbot</th>
-                </tr>
-            </thead>
-            <tbody>
-            </tbody>
-        </table>
-    </div>
-
-    <!--
-        Tier 6 - Other bots
-    -->
-    <div id="tier6">
-        <h2>Tier 6 bots - Remaining bots</h2>
-        <table id="low-priority-list">
+    <div id="packaging-builders">
+        <h2>Packaging post-commit bots</h2>
+        <h3>Builders</h3>
+        <table id="packaging-builders-list">
             <thead>
                 <tr>
                     <th>Builder Name</th>
@@ -239,15 +183,5 @@
             <td class="externalLink"></td>
         </tr>
     </template>
-    <template id=timeLimitListEntry>
-        <tr>
-            <td class="jobNumber"></td>
-            <td class="jobSummary"></td>
-            <td class="jobRevision"></td>
-            <td class="jobFinished"></td>
-            <td class="jobDuration"></td>
-        </tr>
-    </template>
 </body>
 </html>
-
