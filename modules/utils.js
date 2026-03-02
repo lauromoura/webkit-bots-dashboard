@@ -12,13 +12,50 @@ export function urlForJob(builderId, jobNumber) {
     return `${urlForBuilder(builderId)}/builds/${jobNumber}`
 }
 
-export async function getLastBuild(builderId, number) {
-    const path = urlFor(`builders/${builderId}/builds?order=-number&limit=${number+1}`);
-    console.log("Fetching path: " + path);
-    const response = await fetch(path);
-    return response.json().then(data => {
-        return data;
-    });
+export async function getLastBuild(builderId, count) {
+    const cacheKey = `buildcache-${builderId}`;
+    const cached = JSON.parse(localStorage.getItem(cacheKey));
+
+    // Quick probe: fetch just 2 builds to check current state
+    const probePath = urlFor(`builders/${builderId}/builds?order=-number&limit=2`);
+    const probeResponse = await fetch(probePath);
+    const probeData = await probeResponse.json();
+
+    if (probeData.builds.length === 0)
+        return probeData;
+
+    const latestBuild = probeData.builds[0];
+    const lastCompleted = latestBuild.complete ? latestBuild : probeData.builds[1];
+
+    // Cache hit: latest completed build matches cache
+    if (cached && lastCompleted && cached.latestNumber === lastCompleted.number) {
+        if (latestBuild.complete) {
+            // Builder is idle, return cached data
+            return cached.data;
+        } else {
+            // Builder is active: merge fresh in-progress build with cached older builds
+            return { builds: [latestBuild, ...cached.data.builds] };
+        }
+    }
+
+    // Cache miss: full fetch
+    const fullPath = urlFor(`builders/${builderId}/builds?order=-number&limit=${count + 1}`);
+    const fullResponse = await fetch(fullPath);
+    const fullData = await fullResponse.json();
+
+    // Cache completed builds
+    const completedBuilds = fullData.builds.filter(b => b.complete);
+    if (completedBuilds.length > 0) {
+        const cacheData = {
+            builds: completedBuilds,
+            latestNumber: completedBuilds[0].number,
+            data: { builds: completedBuilds },
+            timestamp: Date.now(),
+        };
+        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+    }
+
+    return fullData;
 }
 
 export function isBuilder(builder) {
