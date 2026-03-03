@@ -315,6 +315,14 @@ function generateWorkers(seed) {
         }
     }
 
+    // Force-disconnect all workers for builders 130 and 131
+    // so the queue page can exercise the Preparing and Critical states.
+    for (const w of workers) {
+        const builderIds = w.configured_on.map(c => c.builderid);
+        if (builderIds.includes(130) || builderIds.includes(131))
+            w.connected_to = [];
+    }
+
     return workers;
 }
 
@@ -372,7 +380,39 @@ function generateBuildRequests(seed) {
         }
     }
 
-    return requests;
+    // Override requests for builders 130 and 131 to exercise Preparing / Critical.
+    // Remove any randomly-generated requests for these builders first.
+    const overrideBuilders = new Set([130, 131]);
+    const filtered = requests.filter(r => !overrideBuilders.has(r.builderid));
+    let nextId = requestId;
+
+    // Builder 130: 2 unclaimed requests submitted 2 min ago → Preparing
+    for (let i = 0; i < 2; i++) {
+        filtered.push({
+            buildrequestid: nextId++,
+            builderid: 130,
+            submitted_at: now - 2 * 60,
+            complete: false,
+            claimed: false,
+            claimed_at: null,
+            claimed_by_masterid: null,
+        });
+    }
+
+    // Builder 131: 2 unclaimed requests submitted 15 min ago → Critical
+    for (let i = 0; i < 2; i++) {
+        filtered.push({
+            buildrequestid: nextId++,
+            builderid: 131,
+            submitted_at: now - 15 * 60,
+            complete: false,
+            claimed: false,
+            claimed_at: null,
+            claimed_by_masterid: null,
+        });
+    }
+
+    return filtered;
 }
 
 function queryBuildRequests(requests, params) {

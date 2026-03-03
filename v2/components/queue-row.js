@@ -2,24 +2,41 @@ import { el } from "./_dom.js";
 import { buildbotBuilderURL } from "../lib/urls.js";
 
 // Severity thresholds — adjust these to tune color coding
-const PENDING_SLOW_THRESHOLD = 3;
-const WAIT_SLOW_THRESHOLD_MIN = 30;
+const SPINUP_THRESHOLD_SEC = 600;        // 10 minutes — normal worker spin-up time
+const PENDING_WARN_THRESHOLD = 3;
+const WAIT_WARN_THRESHOLD_SEC = 1800;    // 30 minutes
 
-const SEVERITY_OK = 0;
-const SEVERITY_MODERATE = 1;
-const SEVERITY_SLOW = 2;
-const SEVERITY_CRITICAL = 3;
+const SEVERITY_IDLE = 0;
+const SEVERITY_WORKING = 1;
+const SEVERITY_PREPARING = 2;
+const SEVERITY_WARNING = 3;
+const SEVERITY_CRITICAL = 4;
 
-export function classifySeverity(pendingCount, oldestWaitSec, connectedWorkers, totalWorkers, pausedWorkers) {
-    // Workers scale to zero when idle — only critical if jobs are waiting with no workers
-    const noWorkersAvailable = connectedWorkers === 0 || pausedWorkers === totalWorkers;
-    if (pendingCount > 0 && noWorkersAvailable)
+export function classifySeverity(pendingCount, oldestWaitSec, connectedWorkers, totalWorkers, pausedWorkers, runningCount) {
+    if (pendingCount === 0 && runningCount === 0)
+        return SEVERITY_IDLE;
+
+    if (runningCount > 0) {
+        // When builds are running, oldest wait grows to match build duration —
+        // only the pending COUNT indicates a real backlog.
+        if (pendingCount >= PENDING_WARN_THRESHOLD)
+            return SEVERITY_WARNING;
+        return SEVERITY_WORKING;
+    }
+
+    // From here: pending > 0, running == 0
+    const workersAvailable = connectedWorkers > 0 && pausedWorkers < totalWorkers;
+    if (workersAvailable) {
+        // Nothing running despite available workers — long wait IS abnormal
+        if (pendingCount >= PENDING_WARN_THRESHOLD || oldestWaitSec > WAIT_WARN_THRESHOLD_SEC)
+            return SEVERITY_WARNING;
+        return SEVERITY_WORKING;
+    }
+
+    // No workers available, pending > 0, running == 0
+    if (oldestWaitSec >= SPINUP_THRESHOLD_SEC)
         return SEVERITY_CRITICAL;
-    if (pendingCount >= PENDING_SLOW_THRESHOLD || oldestWaitSec > WAIT_SLOW_THRESHOLD_MIN * 60)
-        return SEVERITY_SLOW;
-    if (pendingCount > 0)
-        return SEVERITY_MODERATE;
-    return SEVERITY_OK;
+    return SEVERITY_PREPARING;
 }
 
 function formatDuration(seconds) {
@@ -61,7 +78,7 @@ export function renderQueueRow(builder, requests, workers) {
     const connectedWorkers = workers.filter(w => w.connected_to.length > 0).length;
     const pausedWorkers = workers.filter(w => w.paused).length;
 
-    const severity = classifySeverity(pending.length, oldestWaitSec, connectedWorkers, totalWorkers, pausedWorkers);
+    const severity = classifySeverity(pending.length, oldestWaitSec, connectedWorkers, totalWorkers, pausedWorkers, running.length);
 
     // Builder name cell
     const nameCell = el("td", { className: "builderName" }, [
@@ -96,8 +113,8 @@ export function renderQueueRow(builder, requests, workers) {
     const workersCell = el("td", { className: "queue-status" }, [workersText]);
 
     // Status cell
-    const statusLabels = ["OK", "Moderate", "Slow", "Critical"];
-    const statusClasses = ["queue-ok", "queue-moderate", "queue-slow", "queue-critical"];
+    const statusLabels = ["Idle", "Working", "Preparing", "Warning", "Critical"];
+    const statusClasses = ["queue-idle", "queue-working", "queue-preparing", "queue-warning", "queue-critical"];
     const statusCell = el("td", { className: `queue-status ${statusClasses[severity]}` }, [
         statusLabels[severity],
     ]);

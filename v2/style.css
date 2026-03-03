@@ -117,23 +117,28 @@ tbody tr:nth-child(even) {
     padding: 4px 8px;
 }
 
-.queue-ok {
+.queue-idle {
+    background-color: #e0e0e0;
+    border-radius: 5px;
+}
+
+.queue-working {
     background-color: lightgreen;
     border-radius: 5px;
 }
 
-.queue-moderate {
+.queue-preparing {
+    background-color: #b3d9ff;
+    border-radius: 5px;
+}
+
+.queue-warning {
     background-color: #ffe066;
     border-radius: 5px;
 }
 
-.queue-slow {
-    background-color: pink;
-    border-radius: 5px;
-}
-
 .queue-critical {
-    background-color: pink;
+    background-color: rgb(255, 120, 120);
     border-radius: 5px;
     font-weight: bold;
 }
