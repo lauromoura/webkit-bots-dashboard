@@ -1,7 +1,7 @@
 export function urlFor(path) {
-    const BASE_URL = "https://build.webkit.org/api/v2/";
-    const URL_SUFFIX = "";
-    return BASE_URL + path + URL_SUFFIX;
+    const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    const BASE_URL = isLocal ? "/api/v2/" : "https://build.webkit.org/api/v2/";
+    return BASE_URL + path;
 }
 
 export function urlForBuilder(path) {

@@ -1,6 +1,8 @@
 import * as utils from "./modules/utils.js";
 
-let API = "https://build.webkit.org/api/v2/builders/{}/builds?property=identifier&limit=300&order=-number&complete=1&results=0";
+const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+const API_BASE = isLocal ? "/api/v2" : "https://build.webkit.org/api/v2";
+let API = `${API_BASE}/builders/{}/builds?property=identifier&limit=300&order=-number&complete=1&results=0`;
 
 
 function buildLink(builder, job) {

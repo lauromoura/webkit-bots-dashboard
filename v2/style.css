@@ -1,0 +1,150 @@
+body {
+    font-size: 12px;
+    font-family: sans-serif;
+}
+
+table {
+    table-layout: fixed;
+    width: 100%;
+    border-collapse: collapse;
+    border: 3px solid gray;
+}
+
+thead {
+    text-align: center;
+    background-color: lightgrey;
+}
+
+thead th:nth-child(4) {
+    width: 10%;
+}
+
+tbody tr:nth-child(odd) {
+    background-color: white;
+}
+
+tbody tr:nth-child(even) {
+    background-color: rgb(243, 243, 243);
+}
+
+.buildTime {
+    text-align: right;
+    padding-right: 2px;
+}
+
+.success {
+    border-radius: 5px;
+    background-color: lightgreen;
+}
+
+.failure {
+    border-radius: 5px;
+    background-color: pink;
+}
+
+.building {
+    border-radius: 10px;
+    background-color: yellow;
+}
+
+.otherBuilds > ul {
+    list-style: none;
+}
+
+.otherBuilds > ul > li {
+    display: inline;
+    padding: 5px;
+    border-radius: 5px;
+    margin: 2px;
+}
+
+.linkButton {
+    color: white;
+    background-color: #13a4a4;
+    font-size: 16px;
+    padding: 5px;
+    border-radius: 2px;
+    text-decoration: none;
+}
+
+/* Build history table (builder detail page) */
+
+.build-history thead {
+    font-weight: bold;
+}
+
+.build-history td > a {
+    color: black;
+}
+
+.build-history thead th:nth-child(1) {
+    width: 50px;
+}
+
+.build-history thead th:nth-child(2) {
+    width: 100px;
+}
+
+.build-history thead th:nth-child(3) {
+    width: 200px;
+}
+
+.build-history thead th:nth-child(4) {
+    width: 150px;
+}
+
+.build-history tbody tr td:nth-child(1) {
+    text-align: center;
+}
+
+.build-history tbody tr td:nth-child(2) {
+    text-align: center;
+}
+
+.build-history .failure {
+    background-color: rgb(255, 100, 100);
+    font-weight: bold;
+}
+
+@media only screen and (max-width: 1024px) {
+    .build-history,
+    .build-history thead,
+    .build-history tbody,
+    .build-history th,
+    .build-history td,
+    .build-history tr {
+        display: block;
+    }
+
+    .build-history thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+
+    .build-history tr {
+        border: 1px solid #ccc;
+    }
+
+    .build-history td {
+        border: none;
+        border-bottom: 1px solid #eee;
+        position: relative;
+        padding-left: 50%;
+    }
+
+    .build-history td:before {
+        position: absolute;
+        left: 6px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        text-align: left;
+    }
+
+    .build-history td:nth-of-type(1):before { content: "Job number"; }
+    .build-history td:nth-of-type(2):before { content: "Identifier"; }
+    .build-history td:nth-of-type(3):before { content: "Started"; }
+    .build-history td:nth-of-type(4):before { content: "Duration"; }
+    .build-history td:nth-of-type(5):before { content: "Status"; }
+}
