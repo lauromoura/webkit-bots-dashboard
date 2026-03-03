@@ -4,6 +4,7 @@ const NAV_LINKS = [
     { href: "../all-builders.html", label: "All builders", bold: true },
     { href: "../charts.html",       label: "Test run charts" },
     { href: "../unified.html",      label: "Unified build timing" },
+    { href: "./queue.html",         label: "Queue status" },
 ];
 
 /**

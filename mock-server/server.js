@@ -11,7 +11,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const url = require("url");
-const { BUILDERS, generateBuilds, queryBuilds } = require("./data.js");
+const { BUILDERS, generateBuilds, queryBuilds, generateWorkers, generateBuildRequests, queryBuildRequests } = require("./data.js");
 
 // Parse CLI arguments
 const args = process.argv.slice(2);
@@ -29,8 +29,10 @@ for (let i = 0; i < args.length; i++) {
 // Generate all mock data at startup
 console.log(`Generating mock data with seed ${seed}...`);
 const buildsMap = generateBuilds(seed);
+const workersData = generateWorkers(seed);
+const buildRequestsData = generateBuildRequests(seed);
 const builderById = new Map(BUILDERS.map(b => [b.builderid, b]));
-console.log(`Generated builds for ${BUILDERS.length} builders.`);
+console.log(`Generated builds for ${BUILDERS.length} builders, ${workersData.length} workers, ${buildRequestsData.length} build requests.`);
 
 // MIME types for static file serving
 const MIME_TYPES = {
@@ -50,6 +52,8 @@ const STATIC_ROOT = path.resolve(__dirname, "..");
 const BUILDERS_LIST = /^\/api\/v2\/builders\/?$/;
 const BUILDER_BY_ID = /^\/api\/v2\/builders\/(\d+)\/?$/;
 const BUILDER_BUILDS = /^\/api\/v2\/builders\/(\d+)\/builds\/?$/;
+const BUILD_REQUESTS = /^\/api\/v2\/buildrequests\/?$/;
+const WORKERS_LIST = /^\/api\/v2\/workers\/?$/;
 
 const server = http.createServer((req, res) => {
     const parsed = url.parse(req.url, true);
@@ -58,6 +62,17 @@ const server = http.createServer((req, res) => {
 
     // API routes
     let match;
+
+    if ((match = pathname.match(BUILD_REQUESTS))) {
+        const response = queryBuildRequests(buildRequestsData, params);
+        sendJSON(res, response);
+        return;
+    }
+
+    if ((match = pathname.match(WORKERS_LIST))) {
+        sendJSON(res, { workers: workersData, meta: { total: workersData.length } });
+        return;
+    }
 
     if ((match = pathname.match(BUILDERS_LIST))) {
         const response = {

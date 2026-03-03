@@ -13,26 +13,38 @@ function createRNG(seed) {
 
 // Builder definitions — IDs 6 and 133 are hardcoded in unified.js
 const BUILDERS = [
-    { builderid: 6,   name: "WPE Linux 64-bit Release Build",                tags: ["Build", "WPE", "Release"] },
-    { builderid: 20,  name: "WPE Linux 64-bit Debug Build",                  tags: ["Build", "WPE", "Debug"] },
-    { builderid: 41,  name: "GTK Linux 64-bit Release Build",                tags: ["Build", "GTK", "Release"] },
-    { builderid: 43,  name: "GTK Linux 64-bit Debug Build",                  tags: ["Build", "GTK", "Debug"] },
-    { builderid: 40,  name: "WPE Linux 64-bit Release Tests",                tags: ["Tests", "WPE", "Release"] },
-    { builderid: 44,  name: "WPE Linux 64-bit Release JS Tests",             tags: ["Tests", "WPE", "Release", "JS"] },
-    { builderid: 57,  name: "GTK Linux 64-bit Release Tests",                tags: ["Tests", "GTK", "Release"] },
-    { builderid: 58,  name: "GTK Linux 64-bit Release JS Tests",             tags: ["Tests", "GTK", "Release", "JS"] },
-    { builderid: 80,  name: "GTK Linux 64-bit Release Skip Failing Tests",   tags: ["Tests", "GTK", "Release", "Skip", "Failing"] },
-    { builderid: 100, name: "WPE Linux 64-bit Ubuntu LTS Release Build",     tags: ["Build", "WPE", "Release", "Ubuntu"] },
-    { builderid: 101, name: "GTK Linux 64-bit Debian Stable Release Build",  tags: ["Build", "GTK", "Release", "Debian"] },
-    { builderid: 102, name: "GTK Linux 64-bit Ubuntu LTS Release Build",     tags: ["Build", "GTK", "Release", "Ubuntu"] },
-    { builderid: 120, name: "WPE Linux 64-bit Debug Tests",                  tags: ["Tests", "WPE", "Debug"] },
-    { builderid: 121, name: "GTK Linux 64-bit Debug Tests",                  tags: ["Tests", "GTK", "Debug"] },
-    { builderid: 130, name: "WPE Linux 64-bit Release WebDriver Tests",      tags: ["Tests", "WPE", "Release", "WebDriver"] },
-    { builderid: 131, name: "GTK Linux 64-bit Release GTK4 Tests",           tags: ["Tests", "GTK", "Release", "GTK4"] },
-    { builderid: 132, name: "GTK Linux 64-bit Release Wayland Tests",        tags: ["Tests", "GTK", "Release", "Wayland"] },
-    { builderid: 133, name: "WPE Linux 64-bit Non-Unified Release Build",    tags: ["Build", "WPE", "Release", "Non", "Unified"] },
-    { builderid: 134, name: "GTK Linux 64-bit Release Perf Tests",           tags: ["Tests", "GTK", "Release", "Perf"] },
-    { builderid: 140, name: "WPE Linux 64-bit Release Packaging",            tags: ["Packaging", "WPE", "Release"] },
+    { builderid: 6,   name: "WPE Linux 64-bit Release Build",                tags: ["Build", "WPE", "Release"],                       masterids: [1, 2] },
+    { builderid: 20,  name: "WPE Linux 64-bit Debug Build",                  tags: ["Build", "WPE", "Debug"],                         masterids: [1, 2] },
+    { builderid: 41,  name: "GTK Linux 64-bit Release Build",                tags: ["Build", "GTK", "Release"],                       masterids: [1, 2] },
+    { builderid: 43,  name: "GTK Linux 64-bit Debug Build",                  tags: ["Build", "GTK", "Debug"],                         masterids: [1, 2] },
+    { builderid: 40,  name: "WPE Linux 64-bit Release Tests",                tags: ["Tests", "WPE", "Release"],                       masterids: [1, 2] },
+    { builderid: 44,  name: "WPE Linux 64-bit Release JS Tests",             tags: ["Tests", "WPE", "Release", "JS"],                 masterids: [1, 2] },
+    { builderid: 57,  name: "GTK Linux 64-bit Release Tests",                tags: ["Tests", "GTK", "Release"],                       masterids: [1, 2] },
+    { builderid: 58,  name: "GTK Linux 64-bit Release JS Tests",             tags: ["Tests", "GTK", "Release", "JS"],                 masterids: [1, 2] },
+    { builderid: 80,  name: "GTK Linux 64-bit Release Skip Failing Tests",   tags: ["Tests", "GTK", "Release", "Skip", "Failing"],    masterids: [1, 2] },
+    { builderid: 100, name: "WPE Linux 64-bit Ubuntu LTS Release Build",     tags: ["Build", "WPE", "Release", "Ubuntu"],             masterids: [1, 2] },
+    { builderid: 101, name: "GTK Linux 64-bit Debian Stable Release Build",  tags: ["Build", "GTK", "Release", "Debian"],             masterids: [1, 2] },
+    { builderid: 102, name: "GTK Linux 64-bit Ubuntu LTS Release Build",     tags: ["Build", "GTK", "Release", "Ubuntu"],             masterids: [1, 2] },
+    { builderid: 120, name: "WPE Linux 64-bit Debug Tests",                  tags: ["Tests", "WPE", "Debug"],                         masterids: [1, 2] },
+    { builderid: 121, name: "GTK Linux 64-bit Debug Tests",                  tags: ["Tests", "GTK", "Debug"],                         masterids: [1, 2] },
+    { builderid: 130, name: "WPE Linux 64-bit Release WebDriver Tests",      tags: ["Tests", "WPE", "Release", "WebDriver"],          masterids: [1, 2] },
+    { builderid: 131, name: "GTK Linux 64-bit Release GTK4 Tests",           tags: ["Tests", "GTK", "Release", "GTK4"],               masterids: [1, 2] },
+    { builderid: 132, name: "GTK Linux 64-bit Release Wayland Tests",        tags: ["Tests", "GTK", "Release", "Wayland"],            masterids: [1, 2] },
+    { builderid: 133, name: "WPE Linux 64-bit Non-Unified Release Build",    tags: ["Build", "WPE", "Release", "Non", "Unified"],     masterids: [1, 2] },
+    { builderid: 134, name: "GTK Linux 64-bit Release Perf Tests",           tags: ["Tests", "GTK", "Release", "Perf"],               masterids: [1, 2] },
+    { builderid: 140, name: "WPE Linux 64-bit Release Packaging",            tags: ["Packaging", "WPE", "Release"],                   masterids: [1, 2] },
+    // JSCOnly Linux builders
+    { builderid: 24,  name: "JSCOnly-Linux-ARMv7-Thumb2-Release",            tags: ["Tests", "JSCOnly", "Linux", "Release"],           masterids: [1, 2] },
+    { builderid: 53,  name: "JSCOnly-Linux-AArch64-Release",                 tags: ["Tests", "JSCOnly", "Linux", "Release"],           masterids: [1, 2] },
+    // Retired builders — no longer attached to any master
+    { builderid: 200, name: "Old GTK Release Build (retired)",               tags: ["Build", "GTK", "Release"],                       masterids: [] },
+    { builderid: 201, name: "Old WPE Debug Tests (retired)",                 tags: ["Tests", "WPE", "Debug"],                         masterids: [] },
+    { builderid: 202, name: "Old GTK Wayland Tests (retired)",               tags: ["Tests", "GTK", "Release", "Wayland"],            masterids: [] },
+    // Retired JSCOnly Linux builders
+    { builderid: 31,  name: "JSCOnly-Linux-MIPS32el-Release",                tags: ["Tests", "JSCOnly", "Linux", "Release"],           masterids: [] },
+    { builderid: 61,  name: "JSCOnly-Linux-ARMv7-Thumb2-SoftFP-Release",     tags: ["Tests", "JSCOnly", "Linux", "Release"],           masterids: [] },
+    // Irrelevant retired builder (should be filtered out)
+    { builderid: 210, name: "Apple macOS Release Build (retired)",            tags: ["Build", "Release", "macOS"],                     masterids: [] },
 ];
 
 const FAILURE_STRINGS_BUILD = [
@@ -278,4 +290,99 @@ function queryBuilds(builds, params) {
     return { builds: serialized, meta: { total: serialized.length } };
 }
 
-module.exports = { BUILDERS, generateBuilds, queryBuilds };
+function generateWorkers(seed) {
+    const rng = createRNG(seed);
+    const workers = [];
+    let workerId = 1;
+
+    for (const builder of BUILDERS) {
+        const workerCount = 1 + Math.floor(rng() * 3); // 1-3 workers per builder
+        for (let i = 0; i < workerCount; i++) {
+            const connected = rng() < 0.85;
+            const paused = connected && rng() < 0.10;
+            // Simulate multimaster: each worker is configured on both masters
+            workers.push({
+                workerid: workerId,
+                name: `${builder.name.replace(/\s+/g, "-").toLowerCase()}-worker-${i + 1}`,
+                connected_to: connected ? [{ masterid: 1 }] : [],
+                configured_on: [
+                    { builderid: builder.builderid, masterid: 1 },
+                    { builderid: builder.builderid, masterid: 2 },
+                ],
+                paused,
+            });
+            workerId++;
+        }
+    }
+
+    return workers;
+}
+
+function generateBuildRequests(seed) {
+    const rng = createRNG(seed);
+    const now = Math.floor(Date.now() / 1000);
+    const requests = [];
+    let requestId = 1;
+
+    for (const builder of BUILDERS) {
+        const roll = rng();
+        let pendingCount, claimedCount;
+
+        if (roll < 0.60) {
+            // 60% of builders: no pending requests
+            pendingCount = 0;
+            claimedCount = rng() < 0.3 ? 1 : 0;
+        } else if (roll < 0.90) {
+            // 30% of builders: 1-2 pending
+            pendingCount = 1 + Math.floor(rng() * 2);
+            claimedCount = rng() < 0.5 ? 1 : 0;
+        } else {
+            // 10% of builders: 3-5 pending (makes the page interesting)
+            pendingCount = 3 + Math.floor(rng() * 3);
+            claimedCount = 1;
+        }
+
+        // Generate claimed (in-progress) requests
+        for (let i = 0; i < claimedCount; i++) {
+            const submittedAt = now - Math.floor(10 * 60 + rng() * 50 * 60);
+            const claimedAt = submittedAt + Math.floor(rng() * 5 * 60);
+            requests.push({
+                buildrequestid: requestId++,
+                builderid: builder.builderid,
+                submitted_at: submittedAt,
+                complete: false,
+                claimed: true,
+                claimed_at: claimedAt,
+                claimed_by_masterid: 1,
+            });
+        }
+
+        // Generate unclaimed (pending) requests
+        for (let i = 0; i < pendingCount; i++) {
+            const age = Math.floor(rng() * 60 * 60); // 0-60 min ago
+            requests.push({
+                buildrequestid: requestId++,
+                builderid: builder.builderid,
+                submitted_at: now - age,
+                complete: false,
+                claimed: false,
+                claimed_at: null,
+                claimed_by_masterid: null,
+            });
+        }
+    }
+
+    return requests;
+}
+
+function queryBuildRequests(requests, params) {
+    let filtered = requests.slice();
+
+    if (params.complete__eq === "false") {
+        filtered = filtered.filter(r => r.complete === false);
+    }
+
+    return { buildrequests: filtered, meta: { total: filtered.length } };
+}
+
+module.exports = { BUILDERS, generateBuilds, queryBuilds, generateWorkers, generateBuildRequests, queryBuildRequests };

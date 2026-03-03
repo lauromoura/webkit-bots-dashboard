@@ -10,6 +10,8 @@ const TIER_SECTIONS = [
     { key: "tier2", title: "Tier 2 bots - Test bots - Must not exit early" },
     { key: "tier4", title: "Tier 4 bots - Stable/LTS must be green" },
     { key: "tier5", title: "Tier 5 bots - Remaining bots" },
+    { key: "jsconly", title: "JSCOnly Linux bots" },
+    { key: "retired", title: "Retired builders (no active master)" },
 ];
 
 async function init() {
@@ -26,13 +28,23 @@ async function init() {
 
     const tiers = classifyByTier(builders);
 
-    // Tier 1, 2, 4, 5 — standard builder tables
+    // Tier 1, 2, 4, 5 — standard builder tables; retired in collapsed <details>
     for (const { key, title } of TIER_SECTIONS) {
-        const section = el("div", { id: key }, [
-            el("h2", null, [title]),
-            renderBuilderTable(tiers[key]),
-        ]);
-        app.appendChild(section);
+        if (key === "retired") {
+            if (tiers.retired.length === 0)
+                continue;
+            const details = el("details", { id: key }, [
+                el("summary", null, [el("h2", { style: "display:inline" }, [title])]),
+                renderBuilderTable(tiers[key]),
+            ]);
+            app.appendChild(details);
+        } else {
+            const section = el("div", { id: key }, [
+                el("h2", null, [title]),
+                renderBuilderTable(tiers[key]),
+            ]);
+            app.appendChild(section);
+        }
     }
 
     // Tier 3 — release tester time limits

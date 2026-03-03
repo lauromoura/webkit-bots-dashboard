@@ -106,6 +106,38 @@ tbody tr:nth-child(even) {
     font-weight: bold;
 }
 
+/* Queue status table */
+
+.queue-table {
+    table-layout: auto;
+}
+
+.queue-status {
+    text-align: center;
+    padding: 4px 8px;
+}
+
+.queue-ok {
+    background-color: lightgreen;
+    border-radius: 5px;
+}
+
+.queue-moderate {
+    background-color: #ffe066;
+    border-radius: 5px;
+}
+
+.queue-slow {
+    background-color: pink;
+    border-radius: 5px;
+}
+
+.queue-critical {
+    background-color: pink;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
 @media only screen and (max-width: 1024px) {
     .build-history,
     .build-history thead,

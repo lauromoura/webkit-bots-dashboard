@@ -59,6 +59,22 @@ export function isSkipFailing(builder) {
     return builder.tags.includes("Skip") && builder.tags.includes("Failing");
 }
 
+export function isRetired(builder) {
+    return !builder.masterids || builder.masterids.length === 0;
+}
+
+export function isJSCOnly(builder) {
+    return builder.tags.includes("JSCOnly");
+}
+
+export function isJSCOnlyLinux(builder) {
+    return isJSCOnly(builder) && builder.tags.includes("Linux");
+}
+
+export function isRelevantPlatform(builder) {
+    return isWPE(builder) || isGTK(builder) || isJSCOnlyLinux(builder);
+}
+
 export function isTier1(builder) {
     if (isNonUnified(builder))
         return false;
@@ -104,9 +120,12 @@ export function isLowTier(builder) {
 }
 
 export function classifyByTier(builders) {
-    const tiers = { tier1: [], tier2: [], tier4: [], tier5: [] };
+    const tiers = { tier1: [], tier2: [], tier4: [], tier5: [], jsconly: [], retired: [] };
     for (const builder of builders) {
-        if (isTier1(builder))
+        if (isRetired(builder)) {
+            if (isRelevantPlatform(builder))
+                tiers.retired.push(builder);
+        } else if (isTier1(builder))
             tiers.tier1.push(builder);
         else if (isTier2(builder))
             tiers.tier2.push(builder);
@@ -114,6 +133,8 @@ export function classifyByTier(builders) {
             tiers.tier4.push(builder);
         else if (isLowTier(builder))
             tiers.tier5.push(builder);
+        else if (isJSCOnlyLinux(builder))
+            tiers.jsconly.push(builder);
     }
     return tiers;
 }

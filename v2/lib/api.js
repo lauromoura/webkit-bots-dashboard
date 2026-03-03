@@ -24,8 +24,18 @@ export async function fetchAPI(path) {
 }
 
 export async function getBuilders() {
-    const data = await fetchAPI("builders?field=builderid&field=name&field=tags");
+    const data = await fetchAPI("builders?field=builderid&field=name&field=tags&field=masterids");
     return data?.builders;
+}
+
+export async function getAllPendingRequests() {
+    const data = await fetchAPI("buildrequests?complete__eq=false");
+    return data?.buildrequests;
+}
+
+export async function getAllWorkers() {
+    const data = await fetchAPI("workers");
+    return data?.workers;
 }
 
 export async function getLastBuilds(builderId, count = 6) {
