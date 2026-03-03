@@ -10,13 +10,15 @@ import { formatRelativeDate, formatRelativeDateFromNow } from "../lib/format.js"
  * @returns {HTMLTableRowElement}
  */
 export function renderBuilderRow(builder, data) {
+    const now = Math.floor(Date.now() / 1000);
+
     const nameCell = el("td", { className: "builderName" }, [
         el("a", { href: builderPageURL(builder.builderid) }, [builder.name]),
     ]);
 
-    const currentBuildCell = el("td", { className: "currentBuild" });
+    const currentBuildCell = el("td", { className: "currentBuild", "data-sort": "0" });
     const lastBuildCell = el("td", { className: "lastBuild" });
-    const buildTimeCell = el("td", { className: "buildTime" });
+    const buildTimeCell = el("td", { className: "buildTime", "data-sort": "0" });
     const otherBuildsCell = el("td", { className: "otherBuilds" });
     const externalLinkCell = el("td", { className: "externalLink" }, [
         el("a", { href: buildbotBuilderURL(builder.builderid) }, ["External link"]),
@@ -39,8 +41,10 @@ export function renderBuilderRow(builder, data) {
     // Current build column
     if (build.complete) {
         currentBuildCell.textContent = "Waiting for jobs";
+        currentBuildCell.setAttribute("data-sort", "0");
     } else {
         currentBuildCell.classList.add("building");
+        currentBuildCell.setAttribute("data-sort", `${now - build.started_at}`);
         const link = el("a", { href: buildbotBuildURL(builder.builderid, build.number) },
             [`(Build #${build.number})`]);
         currentBuildCell.appendChild(link);
@@ -69,6 +73,7 @@ export function renderBuilderRow(builder, data) {
     const dateStr = formatRelativeDateFromNow(build.complete_at);
     const durationStr = formatRelativeDate(build.started_at, build.complete_at, "");
     buildTimeCell.textContent = `${dateStr} (duration: ${durationStr})`;
+    buildTimeCell.setAttribute("data-sort", `${build.complete_at || 0}`);
 
     // Older builds column (colored pills)
     const ul = el("ul");

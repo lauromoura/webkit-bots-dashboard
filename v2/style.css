@@ -15,6 +15,11 @@ thead {
     background-color: lightgrey;
 }
 
+/* Ensure sort arrows are visible against colored header backgrounds */
+th[role=columnheader]:not([data-sort-method='none']) {
+    cursor: pointer;
+}
+
 thead th:nth-child(4) {
     width: 10%;
 }

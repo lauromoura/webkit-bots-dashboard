@@ -20,8 +20,17 @@ const HEADER_LABELS = [
  * @returns {HTMLTableElement}
  */
 export function renderQueueTable(builders, requestsByBuilder, workersByBuilder) {
-    const headerRow = el("tr", null,
-        HEADER_LABELS.map(label => el("th", null, [label])));
+    const headerCells = HEADER_LABELS.map(label => el("th", null, [label]));
+    // Force numeric sorting on columns with data-sort numeric values
+    headerCells[1].setAttribute("data-sort-method", "number"); // Pending
+    headerCells[2].setAttribute("data-sort-method", "number"); // Oldest Wait
+    headerCells[3].setAttribute("data-sort-method", "number"); // Running
+    headerCells[4].setAttribute("data-sort-method", "number"); // Workers
+    headerCells[5].setAttribute("data-sort-method", "number"); // Status
+    // Mark Status column as default sort (descending, matching the JS pre-sort)
+    headerCells[5].setAttribute("data-sort-default", "");
+    headerCells[5].setAttribute("data-sort-reverse", "");
+    const headerRow = el("tr", null, headerCells);
     const thead = el("thead", null, [headerRow]);
     const tbody = el("tbody");
 
@@ -38,5 +47,9 @@ export function renderQueueTable(builders, requestsByBuilder, workersByBuilder) 
     for (const { row } of rows)
         tbody.appendChild(row);
 
-    return el("table", { className: "queue-table" }, [thead, tbody]);
+    const table = el("table", { className: "queue-table" }, [thead, tbody]);
+
+    new Tablesort(table);
+
+    return table;
 }

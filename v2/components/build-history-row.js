@@ -15,7 +15,7 @@ export function renderBuildHistoryRow(builderId, build) {
     const numberLink = el("a", {
         href: buildbotBuildURL(builderId, build.number),
     }, [`#${build.number}`]);
-    const numberCell = el("td", { className: "jobNumber" }, [numberLink]);
+    const numberCell = el("td", { className: "jobNumber", "data-sort": `${build.number}` }, [numberLink]);
 
     if (!build.complete) {
         numberCell.classList.add("building");
@@ -37,11 +37,13 @@ export function renderBuildHistoryRow(builderId, build) {
     }
 
     // Started cell
-    const startedCell = el("td", { className: "jobStarted" });
+    const startedCell = el("td", { className: "jobStarted", "data-sort": `${build.started_at}` });
     startedCell.textContent = formatRelativeDateFromNow(build.started_at, " ago", true);
 
     // Duration cell
-    const durationCell = el("td", { className: "jobDuration" });
+    const now = Math.floor(Date.now() / 1000);
+    const durationSec = build.complete ? build.complete_at - build.started_at : now - build.started_at;
+    const durationCell = el("td", { className: "jobDuration", "data-sort": `${durationSec}` });
     if (build.complete) {
         durationCell.textContent = formatRelativeDate(build.started_at, build.complete_at, "");
     } else {

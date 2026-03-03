@@ -17,8 +17,12 @@ const HEADER_LABELS = [
  * @returns {HTMLTableElement}
  */
 export function renderTimeLimitTable(builder) {
-    const headerRow = el("tr", null,
-        HEADER_LABELS.map(label => el("th", null, [label])));
+    const headerCells = HEADER_LABELS.map(label => el("th", null, [label]));
+    // Force numeric sorting on columns with data-sort numeric values
+    headerCells[0].setAttribute("data-sort-method", "number"); // Job number
+    headerCells[2].setAttribute("data-sort-method", "number"); // Finished
+    headerCells[3].setAttribute("data-sort-method", "number"); // Duration
+    const headerRow = el("tr", null, headerCells);
     const thead = el("thead", null, [headerRow]);
     const tbody = el("tbody");
     const table = el("table", null, [thead, tbody]);
@@ -29,6 +33,7 @@ export function renderTimeLimitTable(builder) {
         for (const build of data.builds) {
             tbody.appendChild(renderTimeLimitRow(build));
         }
+        new Tablesort(table);
     });
 
     return table;

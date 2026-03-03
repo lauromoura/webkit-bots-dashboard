@@ -86,36 +86,37 @@ export function renderQueueRow(builder, requests, workers) {
     ]);
 
     // Pending cell
-    const pendingCell = el("td", { className: "queue-status" }, [
+    const pendingCell = el("td", { className: "queue-status", "data-sort": `${pending.length}` }, [
         pending.length > 0 ? `${pending.length} pending` : "0",
     ]);
 
     // Oldest wait cell
-    const waitCell = el("td", { className: "queue-status" }, [
+    const waitCell = el("td", { className: "queue-status", "data-sort": `${oldestWaitSec}` }, [
         pending.length > 0 ? formatDuration(oldestWaitSec) : "\u2014",
     ]);
 
     // Running cell
     let runningText;
+    let longestRunningSec = 0;
     if (running.length === 0) {
         runningText = "\u2014";
     } else {
         const elapsed = running.map(r => now - r.claimed_at);
-        const longest = Math.max(...elapsed);
-        runningText = `${running.length} build${running.length > 1 ? "s" : ""} (${formatDuration(longest)})`;
+        longestRunningSec = Math.max(...elapsed);
+        runningText = `${running.length} build${running.length > 1 ? "s" : ""} (${formatDuration(longestRunningSec)})`;
     }
-    const runningCell = el("td", { className: "queue-status" }, [runningText]);
+    const runningCell = el("td", { className: "queue-status", "data-sort": `${longestRunningSec}` }, [runningText]);
 
     // Workers cell
     let workersText = `${connectedWorkers}/${totalWorkers} connected`;
     if (pausedWorkers > 0)
         workersText += ` (${pausedWorkers} paused)`;
-    const workersCell = el("td", { className: "queue-status" }, [workersText]);
+    const workersCell = el("td", { className: "queue-status", "data-sort": `${connectedWorkers}` }, [workersText]);
 
     // Status cell
     const statusLabels = ["Idle", "Working", "Preparing", "Warning", "Critical"];
     const statusClasses = ["queue-idle", "queue-working", "queue-preparing", "queue-warning", "queue-critical"];
-    const statusCell = el("td", { className: `queue-status ${statusClasses[severity]}` }, [
+    const statusCell = el("td", { className: `queue-status ${statusClasses[severity]}`, "data-sort": `${severity}` }, [
         statusLabels[severity],
     ]);
 

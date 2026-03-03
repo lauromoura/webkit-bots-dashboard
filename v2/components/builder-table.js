@@ -19,17 +19,27 @@ const HEADER_LABELS = [
  * @returns {HTMLTableElement}
  */
 export function renderBuilderTable(builders) {
-    const headerRow = el("tr", null,
-        HEADER_LABELS.map(label => el("th", null, [label])));
+    const headerCells = HEADER_LABELS.map(label => el("th", null, [label]));
+    // Force numeric sorting on columns with data-sort numeric values
+    headerCells[1].setAttribute("data-sort-method", "number"); // Current build
+    headerCells[3].setAttribute("data-sort-method", "number"); // Finished
+    // Mark non-sortable columns
+    headerCells[4].setAttribute("data-sort-method", "none"); // Other builds
+    headerCells[5].setAttribute("data-sort-method", "none"); // Link to buildbot
+    const headerRow = el("tr", null, headerCells);
     const thead = el("thead", null, [headerRow]);
     const tbody = el("tbody");
     const table = el("table", null, [thead, tbody]);
 
-    for (const builder of builders) {
+    const promises = builders.map(builder =>
         getLastBuilds(builder.builderid, 6).then(data => {
             tbody.appendChild(renderBuilderRow(builder, data));
-        });
-    }
+        })
+    );
+
+    Promise.all(promises).then(() => {
+        new Tablesort(table);
+    });
 
     return table;
 }

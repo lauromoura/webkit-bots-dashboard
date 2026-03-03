@@ -17,8 +17,12 @@ const HEADER_LABELS = [
  * @returns {HTMLTableElement}
  */
 export function renderBuildHistoryTable(builderId, builds) {
-    const headerRow = el("tr", null,
-        HEADER_LABELS.map(label => el("th", null, [label])));
+    const headerCells = HEADER_LABELS.map(label => el("th", null, [label]));
+    // Force numeric sorting on columns with data-sort numeric values
+    headerCells[0].setAttribute("data-sort-method", "number"); // Job number
+    headerCells[2].setAttribute("data-sort-method", "number"); // Started
+    headerCells[3].setAttribute("data-sort-method", "number"); // Job duration
+    const headerRow = el("tr", null, headerCells);
     const thead = el("thead", null, [headerRow]);
     const tbody = el("tbody");
 
@@ -26,5 +30,9 @@ export function renderBuildHistoryTable(builderId, builds) {
         tbody.appendChild(renderBuildHistoryRow(builderId, build));
     }
 
-    return el("table", { id: "jobsList", className: "build-history" }, [thead, tbody]);
+    const table = el("table", { id: "jobsList", className: "build-history" }, [thead, tbody]);
+
+    new Tablesort(table);
+
+    return table;
 }
