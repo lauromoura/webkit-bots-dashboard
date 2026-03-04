@@ -40,6 +40,21 @@ async function init() {
     const app = document.getElementById("app");
     app.appendChild(renderPageHeader("Queue & Worker Status"));
 
+    const legend = el("p", { className: "queue-legend" }, [
+        el("b", null, ["Status: "]),
+        el("span", { className: "queue-idle queue-legend-chip" }, ["Idle"]),
+        " — no pending or running builds. ",
+        el("span", { className: "queue-working queue-legend-chip" }, ["Working"]),
+        " — builds running normally. ",
+        el("span", { className: "queue-preparing queue-legend-chip" }, ["Preparing"]),
+        " — pending builds, workers spinning up. ",
+        el("span", { className: "queue-warning queue-legend-chip" }, ["Warning"]),
+        " — large backlog or long wait despite available workers. ",
+        el("span", { className: "queue-critical queue-legend-chip" }, ["Critical"]),
+        " — pending builds, no workers responding for 10+ min.",
+    ]);
+    app.appendChild(legend);
+
     // 3 parallel fetches
     const [builders, requests, workers] = await Promise.all([
         getBuilders(),
