@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WPE Build Job Duration Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+        }
+        .control-group {
+            margin-bottom: 10px;
+        }
+        label {
+            display: inline-block;
+            width: 120px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 400px;
+            padding: 5px;
+            margin-right: 10px;
+        }
+        input[type="file"] {
+            margin-right: 10px;
+        }
+        select {
+            padding: 5px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            background-color: white;
+        }
+        button {
+            padding: 6px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            color: #666666;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        tr:hover {
+            background-color: #ddd;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        .success {
+            color: green;
+            margin-top: 10px;
+        }
+        .chart-container {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chart-controls {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 3px;
+        }
+        .chart-controls label {
+            display: inline-block;
+            margin-right: 20px;
+            font-weight: normal;
+            width: auto;
+        }
+        .chart-controls input[type="radio"] {
+            margin-right: 5px;
+        }
+        canvas {
+            max-height: 400px;
+        }
+        .result-success {
+            color: green;
+            font-weight: bold;
+        }
+        .result-warnings {
+            color: orange;
+            font-weight: bold;
+        }
+        .result-failure {
+            color: red;
+            font-weight: bold;
+        }
+        .result-skipped {
+            color: grey;
+            font-weight: bold;
+        }
+        .result-exception {
+            color: purple;
+            font-weight: bold;
+        }
+        .result-retry {
+            color: purple;
+            font-weight: bold;
+        }
+        .result-cancelled {
+            color: hotpink;
+            font-weight: bold;
+        }
+        .result-building {
+            color: #DAA520;
+            font-weight: bold;
+        }
+        table a {
+            color: #2196F3;
+            text-decoration: none;
+        }
+        table a:hover {
+            text-decoration: underline;
+        }
+        table a:visited {
+            color: #1976D2;
+        }
+    </style>
+</head>
+<body>
+    <h1>WPE Build Job Duration Monitor</h1>
+
+    <p>
+    This page processes build data from the <a href="https://build.webkit.org/">BuildBot API</a>.
+    Select a builder below to view its job duration data.
+    </p>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Main Builders:</label>
+            <button onclick="selectBuilder('WPE-Linux-64-bit-Release-Build')">WPE Release Build</button>
+            <button onclick="selectBuilder('WPE-Linux-64-bit-Debug-Build')">WPE Debug Build</button>
+            <button onclick="selectBuilder('WPE-Linux-64-bit-Release-Tests')">WPE Release Tests</button>
+            <button onclick="selectBuilder('WPE-Linux-64-bit-Debug-Tests')">WPE Debug Tests</button>
+        </div>
+        <div class="control-group">
+            <label for="builderSelect">Other Builders:</label>
+            <select id="builderSelect" onchange="selectBuilderFromDropdown()">
+                <option value="">-- Select a builder --</option>
+                <option value="WPE-Linux-64-bit-Debug-JS-Tests">WPE-Linux-64-bit-Debug-JS-Tests</option>
+                <option value="WPE-Linux-64-bit-Debug-WebDriver-Tests">WPE-Linux-64-bit-Debug-WebDriver-Tests</option>
+                <option value="WPE-Linux-64-bit-Release-Cairo-LibWebRTC-Build">WPE-Linux-64-bit-Release-Cairo-LibWebRTC-Build</option>
+                <option value="WPE-Linux-64-bit-Release-Clang-Build">WPE-Linux-64-bit-Release-Clang-Build</option>
+                <option value="WPE-Linux-64-bit-Release-JS-Tests">WPE-Linux-64-bit-Release-JS-Tests</option>
+                <option value="WPE-Linux-64-bit-Release-Legacy-API-Tests">WPE-Linux-64-bit-Release-Legacy-API-Tests</option>
+                <option value="WPE-Linux-64-bit-Release-MVT-Tests">WPE-Linux-64-bit-Release-MVT-Tests</option>
+                <option value="WPE-Linux-64-bit-Release-Non-Unified-Build">WPE-Linux-64-bit-Release-Non-Unified-Build</option>
+                <option value="WPE-Linux-64-bit-Release-SDK-Container">WPE-Linux-64-bit-Release-SDK-Container</option>
+                <option value="WPE-Linux-64-bit-Release-Ubuntu-2204-Build">WPE-Linux-64-bit-Release-Ubuntu-2204-Build</option>
+                <option value="WPE-Linux-64-bit-Release-Ubuntu-LTS-Build">WPE-Linux-64-bit-Release-Ubuntu-LTS-Build</option>
+                <option value="WPE-Linux-64-bit-Release-WebDriver-Tests">WPE-Linux-64-bit-Release-WebDriver-Tests</option>
+                <option value="WPE-Linux-64bit-Release-Packaging-Nightly">WPE-Linux-64bit-Release-Packaging-Nightly</option>
+                <option value="WPE-Linux-ARM32-bit-Release-Debian-Stable-Build">WPE-Linux-ARM32-bit-Release-Debian-Stable-Build</option>
+                <option value="WPE-Linux-ARM64-bit-Release-Debian-Stable-Build">WPE-Linux-ARM64-bit-Release-Debian-Stable-Build</option>
+                <option value="WPE-Linux-RPi4-32bits-Mesa-Release-Perf-Build">WPE-Linux-RPi4-32bits-Mesa-Release-Perf-Build</option>
+                <option value="WPE-Linux-RPi4-32bits-Mesa-Release-Perf-Tests">WPE-Linux-RPi4-32bits-Mesa-Release-Perf-Tests</option>
+                <option value="WPE-Linux-RPi4-64bits-Mesa-Release-Perf-Build">WPE-Linux-RPi4-64bits-Mesa-Release-Perf-Build</option>
+                <option value="WPE-Linux-RPi4-64bits-Mesa-Release-Perf-Tests">WPE-Linux-RPi4-64bits-Mesa-Release-Perf-Tests</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Current Builder:</label>
+            <strong id="currentBuilder">WPE-Linux-64-bit-Release-Build</strong>
+        </div>
+        <div class="control-group">
+            <label for="urlInput">Load from URL:</label>
+            <input type="text" id="urlInput" placeholder="Enter JSON URL">
+            <button onclick="loadFromURL()">Load</button>
+        </div>
+        <div class="control-group">
+            <label for="fileInput">Load from File:</label>
+            <input type="file" id="fileInput" accept=".json">
+            <button onclick="loadFromFile()">Load</button>
+        </div>
+        <div id="statusMessage"></div>
+    </div>
+
+    <div class="chart-container">
+        <div class="chart-controls">
+            <strong>X-Axis:</strong><br>
+            <label><input type="radio" name="xaxis" value="timestamp" checked onchange="updateChart()"> Timestamp (Started)</label>
+            <label><input type="radio" name="xaxis" value="buildnumber" onchange="updateChart()"> Build Number</label>
+        </div>
+        <canvas id="durationChart"></canvas>
+    </div>
+
+    <div id="tableContainer"></div>
+
+    <script>
+        // Global variable for current builder
+        let currentBuilderName = 'WPE-Linux-64-bit-Release-Build';
+
+        // Function to get API URL for current builder
+        function getBuilderAPIUrl() {
+            return `https://build.webkit.org/api/v2/builders/${currentBuilderName}/builds?limit=100&order=-number&property=identifier`;
+        }
+
+        // Function to get builder page URL
+        function getBuilderPageUrl(buildNumber) {
+            return `https://build.webkit.org/#/builders/${currentBuilderName}/builds/${buildNumber}`;
+        }
+
+        // Function to select a builder and load its data
+        async function selectBuilder(builderName) {
+            currentBuilderName = builderName;
+            document.getElementById('currentBuilder').textContent = builderName;
+
+            // Reset dropdown selection
+            document.getElementById('builderSelect').value = '';
+
+            // Update URL input
+            document.getElementById('urlInput').value = getBuilderAPIUrl();
+
+            // Load data for the selected builder
+            showStatus(`Loading data for ${builderName}...`);
+            const data = await loadData(getBuilderAPIUrl());
+
+            if (data) {
+                processData(data);
+            } else {
+                document.getElementById('tableContainer').innerHTML = '<p>Failed to load data</p>';
+                showStatus('Failed to load data from BuildBot API. Check console for details.', true);
+            }
+        }
+
+        // Function to handle dropdown selection
+        function selectBuilderFromDropdown() {
+            const select = document.getElementById('builderSelect');
+            const builderName = select.value;
+
+            if (builderName) {
+                selectBuilder(builderName);
+            }
+        }
+
+        // Function to load JSON data from a URL
+        async function loadData(source) {
+            try {
+                const response = await fetch(source);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Error loading data:', error);
+                return null;
+            }
+        }
+
+        // Function to format epoch timestamp to YYYY-MM-DD HH:MM:SS UTC
+        function formatTimestamp(epoch) {
+            const date = new Date(epoch * 1000);
+            return date.toISOString().replace('T', ' ').substring(0, 19);
+        }
+
+        // Function to calculate duration in seconds
+        function calculateDuration(startTime, completeTime, isComplete) {
+            if (isComplete && completeTime) {
+                return completeTime - startTime;
+            } else {
+                // For incomplete builds, use current time
+                return Math.floor(Date.now() / 1000) - startTime;
+            }
+        }
+
+        // Function to format duration in a readable format
+        function formatDuration(durationSeconds) {
+            const hours = Math.floor(durationSeconds / 3600);
+            const minutes = Math.floor((durationSeconds % 3600) / 60);
+            const seconds = durationSeconds % 60;
+
+            if (hours > 0) {
+                return `${hours}h ${minutes}m ${seconds}s`;
+            } else if (minutes > 0) {
+                return `${minutes}m ${seconds}s`;
+            } else {
+                return `${seconds}s`;
+            }
+        }
+
+        // Function to format minutes to hh:mm:ss for chart axis
+        function formatMinutesToTime(minutes) {
+            const totalSeconds = Math.round(minutes * 60);
+            const hours = Math.floor(totalSeconds / 3600);
+            const mins = Math.floor((totalSeconds % 3600) / 60);
+            const secs = totalSeconds % 60;
+
+            // Pad with leading zeros
+            const hh = String(hours).padStart(2, '0');
+            const mm = String(mins).padStart(2, '0');
+            const ss = String(secs).padStart(2, '0');
+
+            return `${hh}:${mm}:${ss}`;
+        }
+
+        // Function to get result text and CSS class based on build status
+        function getBuildResult(build) {
+            if (!build.complete) {
+                return {
+                    text: '(Building...)',
+                    cssClass: 'result-building',
+                    color: '#DAA520' // goldenrod
+                };
+            }
+
+            const resultCode = build.results;
+            const resultMap = {
+                0: { text: 'Success', cssClass: 'result-success', color: 'green' },
+                1: { text: 'Warnings', cssClass: 'result-warnings', color: 'orange' },
+                2: { text: 'Failure', cssClass: 'result-failure', color: 'red' },
+                3: { text: 'Skipped', cssClass: 'result-skipped', color: 'grey' },
+                4: { text: 'Exception', cssClass: 'result-exception', color: 'purple' },
+                5: { text: 'Retry', cssClass: 'result-retry', color: 'purple' },
+                6: { text: 'Cancelled', cssClass: 'result-cancelled', color: 'hotpink' }
+            };
+
+            return resultMap[resultCode] || { text: 'Unknown', cssClass: '', color: 'black' };
+        }
+
+        // Chart instance and data (global to allow updating)
+        let chartInstance = null;
+        let chartData = null;
+
+        // Function to create/update the chart
+        function displayChart(builds) {
+            if (!builds || builds.length === 0) {
+                return;
+            }
+
+            // Store builds data globally
+            chartData = builds;
+
+            // Get selected X-axis type
+            const xAxisType = document.querySelector('input[name="xaxis"]:checked').value;
+
+            // Prepare data for the chart (reverse order so oldest is first)
+            const reversedBuilds = [...builds].reverse();
+
+            let chartData_formatted;
+            let xAxisConfig;
+
+            // Generate colors for each point based on build result
+            const pointColors = reversedBuilds.map(build => getBuildResult(build).color);
+
+            if (xAxisType === 'timestamp') {
+                // For timestamp mode, use x,y data points with actual timestamps
+                chartData_formatted = reversedBuilds.map(build => {
+                    const duration = calculateDuration(build.started_at, build.complete_at, build.complete);
+                    return {
+                        x: build.started_at * 1000, // Convert to milliseconds for JS Date
+                        y: Math.round(duration / 60) // Convert to minutes
+                    };
+                });
+
+                xAxisConfig = {
+                    type: 'time',
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Start Time'
+                    },
+                    time: {
+                        unit: 'day',
+                        displayFormats: {
+                            day: 'MMM d',
+                            hour: 'MMM d HH:mm'
+                        },
+                        tooltipFormat: 'yyyy-MM-dd HH:mm:ss'
+                    },
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                };
+            } else {
+                // For build number mode, use categorical labels
+                const labels = reversedBuilds.map(build => build.number.toString());
+                chartData_formatted = reversedBuilds.map(build => {
+                    const duration = calculateDuration(build.started_at, build.complete_at, build.complete);
+                    return Math.round(duration / 60); // Convert to minutes
+                });
+
+                xAxisConfig = {
+                    type: 'category',
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Build Number'
+                    },
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                };
+            }
+
+            // Destroy existing chart if it exists
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            // Create new chart
+            const ctx = document.getElementById('durationChart').getContext('2d');
+            const chartConfig = {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Job Duration (minutes)',
+                        data: chartData_formatted,
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                        pointBackgroundColor: pointColors,
+                        pointBorderColor: pointColors,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        tension: 0.1,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Build Job Duration Over Time'
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.dataset.label || '';
+                                    const value = context.parsed.y;
+                                    return label + ': ' + formatMinutesToTime(value);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: xAxisConfig,
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Duration'
+                            },
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatMinutesToTime(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            // Add labels for build number mode
+            if (xAxisType === 'buildnumber') {
+                chartConfig.data.labels = reversedBuilds.map(build => build.number.toString());
+            }
+
+            chartInstance = new Chart(ctx, chartConfig);
+        }
+
+        // Function to update chart when radio buttons change
+        function updateChart() {
+            if (chartData) {
+                displayChart(chartData);
+            }
+        }
+
+        // Function to display the builds array as a table
+        function displayResults(builds) {
+            const container = document.getElementById('tableContainer');
+
+            if (!builds || builds.length === 0) {
+                container.innerHTML = '<p>No builds to display</p>';
+                return;
+            }
+
+            // Display chart
+            displayChart(builds);
+
+            let tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Job Number</th>
+                            <th>Identifier</th>
+                            <th>Result</th>
+                            <th>Started</th>
+                            <th>Job Duration</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            // Iterate through builds (already in reverse order from API)
+            for (const build of builds) {
+                const identifier = build.properties?.identifier?.[0] || 'N/A';
+                const startTime = formatTimestamp(build.started_at);
+                const duration = calculateDuration(build.started_at, build.complete_at, build.complete);
+                const durationFormatted = formatDuration(duration);
+                const status = build.state_string || 'N/A';
+
+                // Get build result
+                const result = getBuildResult(build);
+
+                // Create links for build number and identifier
+                const buildNumberLink = `<a href="${getBuilderPageUrl(build.number)}" target="_blank">${build.number}</a>`;
+                const identifierLink = identifier !== 'N/A'
+                    ? `<a href="https://commits.webkit.org/${identifier}" target="_blank">${identifier}</a>`
+                    : identifier;
+
+                tableHTML += `
+                    <tr>
+                        <td>${buildNumberLink}</td>
+                        <td>${identifierLink}</td>
+                        <td class="${result.cssClass}">${result.text}</td>
+                        <td>${startTime}</td>
+                        <td>${durationFormatted}</td>
+                        <td>${status}</td>
+                    </tr>
+                `;
+            }
+
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = tableHTML;
+        }
+
+        // Function to display status messages
+        function showStatus(message, isError = false) {
+            const statusElement = document.getElementById('statusMessage');
+            statusElement.textContent = message;
+            statusElement.className = isError ? 'error' : 'success';
+        }
+
+        // Function to process loaded data
+        function processData(data) {
+            if (data && data.builds && data.builds.length > 0) {
+                const builds = data.builds;
+                displayResults(builds);
+                showStatus(`Successfully loaded ${builds.length} builds`);
+            } else {
+                document.getElementById('tableContainer').innerHTML = '<p>No data available</p>';
+                showStatus('No builds found in the JSON', true);
+            }
+        }
+
+        // Load from URL button handler
+        async function loadFromURL() {
+            const url = document.getElementById('urlInput').value.trim();
+            if (!url) {
+                showStatus('Please enter a URL', true);
+                return;
+            }
+
+            showStatus('Loading from URL...');
+            const data = await loadData(url);
+
+            if (data) {
+                processData(data);
+            } else {
+                document.getElementById('tableContainer').innerHTML = '<p>Failed to load data</p>';
+                showStatus('Failed to load data from URL. Check console for details.', true);
+            }
+        }
+
+        // Load from file button handler
+        async function loadFromFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                showStatus('Please select a file', true);
+                return;
+            }
+
+            showStatus('Loading from file...');
+
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                processData(data);
+            } catch (error) {
+                console.error('Error reading file:', error);
+                document.getElementById('tableContainer').innerHTML = '<p>Failed to read file</p>';
+                showStatus('Failed to read or parse the file', true);
+            }
+        }
+
+        // Main execution
+        async function init() {
+            // Update URL input with default builder
+            document.getElementById('urlInput').value = getBuilderAPIUrl();
+
+            // Auto-load default builder on page load
+            showStatus('Loading default builder data...');
+            const data = await loadData(getBuilderAPIUrl());
+
+            if (data) {
+                processData(data);
+            } else {
+                showStatus('Ready to load data. Select a builder above.', false);
+            }
+        }
+
+        // Initialize when the page loads
+        init();
+    </script>
+</body>
+</html>

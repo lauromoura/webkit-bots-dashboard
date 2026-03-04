@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WPE Results Stats</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+        }
+        .control-group {
+            margin-bottom: 10px;
+        }
+        label {
+            display: inline-block;
+            width: 120px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 400px;
+            padding: 5px;
+            margin-right: 10px;
+        }
+        input[type="file"] {
+            margin-right: 10px;
+        }
+        button {
+            padding: 6px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            color: #666666;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        tr:hover {
+            background-color: #ddd;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        .success {
+            color: green;
+            margin-top: 10px;
+        }
+        .chart-container {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chart-controls {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 3px;
+        }
+        .chart-controls label {
+            display: inline-block;
+            margin-right: 20px;
+            font-weight: normal;
+            width: auto;
+        }
+        .chart-controls input[type="checkbox"] {
+            margin-right: 5px;
+        }
+        canvas {
+            max-height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <h1>WPE Release Test Results</h1>
+
+    <p>
+    This page processes the json output from https://results.webkit.org/, focusing on the results from the
+    <a href="https://build.webkit.org/#/builders/40">WPE-Linux-64-bit-Release-Tests</a> post-commit bot.
+    </p>
+
+    <p>This bot is defined by the following configuration object in the results server API:
+    </p>
+    <ul>
+        <li>Platform: WPE</li>
+        <li>Style: release</li>
+        <li>Flavor: wk2 (There's another flavor for the legacy WPE API bot since mid November 2025).</li>
+    <ul>
+
+    <p>
+    To work around some CORS limitations querying the API, we're using a proxy script at <a href="https://people.igalia.com/clopez/results_webkit_proxy_json.php">https://people.igalia.com/clopez/results_webkit_proxy_json.php</a> that accepts the already mentioned <code>platform</code>, <code>release</code>, <code>flavor</code>, and <code>limit</code> parameters.
+    </p>
+
+    <p>
+    To see the custom results, save <a href="https://results.webkit.org/api/results/layout-tests?platform=WPE&style=release&flavor=wk2&limit=100">this link</a> to a file and use the dialog below to load the saved file. Feel free to adjust the parameters according to the <a href="https://results.webkit.org/documentation">results.webkit.org documentation</a>, specially the query parameters.
+    </p>
+
+    <p>
+    Note that currently we don't have a direct way to map a result entry to the build job that created it, so you might need to correlate through the timestamp (UTC).
+    </p>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Quick Load: (Last 100 results)</label>
+            <button onclick="loadPreset('wpe-debug')">WPE Debug</button>
+            <button onclick="loadPreset('wpe-release')">WPE Release</button>
+            <button onclick="loadPreset('gtk-debug')">GTK Debug</button>
+            <button onclick="loadPreset('gtk-release')">GTK Release</button>
+        </div>
+        <div class="control-group">
+            <label for="urlInput">Load from URL:</label>
+            <input type="text" id="urlInput" placeholder="Enter JSON URL">
+            <button onclick="loadFromURL()">Load</button>
+        </div>
+        <div class="control-group">
+            <label for="fileInput">Load from File:</label>
+            <input type="file" id="fileInput" accept=".json">
+            <button onclick="loadFromFile()">Load</button>
+        </div>
+        <div id="statusMessage"></div>
+    </div>
+
+    <div class="chart-container">
+        <div class="chart-controls">
+            <strong>Select data series:</strong><br>
+            <label><input type="checkbox" id="showCrashed" checked onchange="updateChart()"> Unexpected Crashed</label>
+            <label><input type="checkbox" id="showTimedout" checked onchange="updateChart()"> Unexpected Timed Out</label>
+            <label><input type="checkbox" id="showFailed" onchange="updateChart()"> Unexpected Failed</label>
+            <label><input type="checkbox" id="showTestsRun" onchange="updateChart()"> Tests Run</label>
+        </div>
+        <canvas id="crashesChart"></canvas>
+    </div>
+
+    <div id="tableContainer"></div>
+
+    <script>
+        // Function to load JSON data from a local file or URL
+        async function loadData(source) {
+            try {
+                const response = await fetch(source);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Error loading data:', error);
+                return null;
+            }
+        }
+
+        // Function to format epoch timestamp to YYYY-MM-DD HH:MM:SS UTC
+        function formatTimestamp(epoch) {
+            const date = new Date(epoch * 1000);
+            return date.toISOString().replace('T', ' ').substring(0, 19);
+        }
+
+        // Function to calculate duration in a readable format
+        function formatDuration(startTime, endTime) {
+            const durationSeconds = Math.floor(endTime - startTime);
+            const hours = Math.floor(durationSeconds / 3600);
+            const minutes = Math.floor((durationSeconds % 3600) / 60);
+            const seconds = durationSeconds % 60;
+            return `${hours}h ${minutes}m ${seconds}s`;
+        }
+
+        // Chart instance and data (global to allow updating)
+        let chartInstance = null;
+        let chartData = null;
+
+        // Function to create/update the chart
+        function displayChart(results) {
+            if (!results || results.length === 0) {
+                return;
+            }
+
+            // Store results data globally
+            chartData = results;
+
+            // Prepare data for the chart
+            const labels = results.map(result => formatTimestamp(result.stats.start_time));
+
+            // Define all possible datasets
+            const allDatasets = [
+                {
+                    id: 'crashed',
+                    label: 'Unexpected Crashed',
+                    data: results.map(result => result.stats.tests_unexpected_crashed),
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    tension: 0.1,
+                    yAxisID: 'y'
+                },
+                {
+                    id: 'timedout',
+                    label: 'Unexpected Timed Out',
+                    data: results.map(result => result.stats.tests_unexpected_timedout),
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    tension: 0.1,
+                    yAxisID: 'y'
+                },
+                {
+                    id: 'failed',
+                    label: 'Unexpected Failed',
+                    data: results.map(result => result.stats.tests_unexpected_failed),
+                    borderColor: 'rgb(255, 206, 86)',
+                    backgroundColor: 'rgba(255, 206, 86, 0.1)',
+                    tension: 0.1,
+                    yAxisID: 'y'
+                },
+                {
+                    id: 'testsrun',
+                    label: 'Tests Run',
+                    data: results.map(result => result.stats.tests_run),
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    tension: 0.1,
+                    yAxisID: 'y1'
+                }
+            ];
+
+            // Filter datasets based on checkbox selection
+            const selectedDatasets = [];
+            if (document.getElementById('showCrashed').checked) {
+                selectedDatasets.push(allDatasets[0]);
+            }
+            if (document.getElementById('showTimedout').checked) {
+                selectedDatasets.push(allDatasets[1]);
+            }
+            if (document.getElementById('showFailed').checked) {
+                selectedDatasets.push(allDatasets[2]);
+            }
+            if (document.getElementById('showTestsRun').checked) {
+                selectedDatasets.push(allDatasets[3]);
+            }
+
+            // Check if we need dual y-axis (if Tests Run is selected)
+            const showTestsRun = document.getElementById('showTestsRun').checked;
+
+            // Destroy existing chart if it exists
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            // Create new chart
+            const ctx = document.getElementById('crashesChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: selectedDatasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Test Results Over Time'
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Start Time'
+                            },
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Failure Count'
+                            },
+                            beginAtZero: true
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: showTestsRun,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Tests Run'
+                            },
+                            beginAtZero: true,
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Function to update chart when checkboxes change
+        function updateChart() {
+            if (chartData) {
+                displayChart(chartData);
+            }
+        }
+
+        // Function to display the results array as a table
+        function displayResults(results) {
+            const container = document.getElementById('tableContainer');
+
+            if (!results || results.length === 0) {
+                container.innerHTML = '<p>No results to display</p>';
+                return;
+            }
+
+            // Display chart
+            displayChart(results);
+
+            let tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>UUID</th>
+                            <th>Start Time</th>
+                            <th>Duration</th>
+                            <th>Unexpected Failed</th>
+                            <th>Unexpected Crashed</th>
+                            <th>Unexpected Timed Out</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            // Iterate in reverse order so newer items appear first
+            for (let i = results.length - 1; i >= 0; i--) {
+                const result = results[i];
+                const stats = result.stats;
+                const startTime = formatTimestamp(stats.start_time);
+                const duration = formatDuration(stats.start_time, stats.end_time);
+
+                tableHTML += `
+                    <tr>
+                        <td>${result.uuid}</td>
+                        <td>${startTime}</td>
+                        <td>${duration}</td>
+                        <td>${stats.tests_unexpected_failed}</td>
+                        <td>${stats.tests_unexpected_crashed}</td>
+                        <td>${stats.tests_unexpected_timedout}</td>
+                    </tr>
+                `;
+            }
+
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = tableHTML;
+        }
+
+        // Function to display status messages
+        function showStatus(message, isError = false) {
+            const statusElement = document.getElementById('statusMessage');
+            statusElement.textContent = message;
+            statusElement.className = isError ? 'error' : 'success';
+        }
+
+        // Function to process loaded data
+        function processData(data) {
+            if (data && data.length > 0) {
+                // Extract results array from the first configuration
+                const results = data[0].results;
+                displayResults(results);
+                showStatus(`Successfully loaded ${results.length} results`);
+            } else {
+                document.getElementById('tableContainer').innerHTML = '<p>No data available</p>';
+                showStatus('No data found in the JSON', true);
+            }
+        }
+
+        // Preset URLs configuration
+        const presetURLs = {
+            'wpe-debug': 'https://people.igalia.com/clopez/results_webkit_proxy_json.php?platform=WPE&style=debug&flavor=wk2&limit=100',
+            'wpe-release': 'https://people.igalia.com/clopez/results_webkit_proxy_json.php?platform=WPE&style=release&flavor=wk2&limit=100',
+            'gtk-debug': 'https://people.igalia.com/clopez/results_webkit_proxy_json.php?platform=GTK&style=debug&flavor=wk2&limit=100',
+            'gtk-release': 'https://people.igalia.com/clopez/results_webkit_proxy_json.php?platform=GTK&style=release&flavor=wk2&limit=100'
+        };
+
+        // Load from preset button handler
+        async function loadPreset(preset) {
+            const url = presetURLs[preset];
+            if (!url) {
+                showStatus('Invalid preset', true);
+                return;
+            }
+
+            // Update the URL input field to show what's being loaded
+            document.getElementById('urlInput').value = url;
+
+            showStatus(`Loading ${preset.toUpperCase().replace('-', ' ')}...`);
+            const data = await loadData(url);
+
+            if (data) {
+                processData(data);
+            } else {
+                document.getElementById('tableContainer').innerHTML = '<p>Failed to load data</p>';
+                showStatus('Failed to load data from URL', true);
+            }
+        }
+
+        // Load from URL button handler
+        async function loadFromURL() {
+            const url = document.getElementById('urlInput').value.trim();
+            if (!url) {
+                showStatus('Please enter a URL', true);
+                return;
+            }
+
+            showStatus('Loading from URL...');
+            const data = await loadData(url);
+
+            if (data) {
+                processData(data);
+            } else {
+                document.getElementById('tableContainer').innerHTML = '<p>Failed to load data</p>';
+                showStatus('Failed to load data from URL', true);
+            }
+        }
+
+        // Load from file button handler
+        async function loadFromFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                showStatus('Please select a file', true);
+                return;
+            }
+
+            showStatus('Loading from file...');
+
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                processData(data);
+            } catch (error) {
+                console.error('Error reading file:', error);
+                document.getElementById('tableContainer').innerHTML = '<p>Failed to read file</p>';
+                showStatus('Failed to read or parse the file', true);
+            }
+        }
+
+        // Main execution
+        async function init() {
+            // Try to load default local JSON file on page load
+            const data = await loadData('wpe-release.json');
+
+            if (data) {
+                processData(data);
+            } else {
+                showStatus('Ready to load data. Use the controls above.', false);
+            }
+        }
+
+        // Initialize when the page loads
+        init();
+    </script>
+</body>
+</html>
