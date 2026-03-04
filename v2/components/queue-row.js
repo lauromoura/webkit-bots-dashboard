@@ -1,5 +1,5 @@
 import { el } from "./_dom.js";
-import { buildbotBuilderURL } from "../lib/urls.js";
+import { buildbotBuilderURL, builderPageURL } from "../lib/urls.js";
 
 // Severity thresholds — adjust these to tune color coding
 const SPINUP_THRESHOLD_SEC = 600;        // 10 minutes — normal worker spin-up time
@@ -82,7 +82,10 @@ export function renderQueueRow(builder, requests, workers) {
 
     // Builder name cell
     const nameCell = el("td", { className: "builderName" }, [
-        el("a", { href: buildbotBuilderURL(builder.builderid) }, [builder.name]),
+        el("a", { href: builderPageURL(builder.builderid) }, [builder.name]),
+        " (",
+        el("a", { href: buildbotBuilderURL(builder.builderid), target: "_blank" }, ["buildbot"]),
+        ")",
     ]);
 
     // Pending cell
