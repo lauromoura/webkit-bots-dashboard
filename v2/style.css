@@ -111,6 +111,17 @@ tbody tr:nth-child(even) {
     font-weight: bold;
 }
 
+/* Pending requests table (builder detail page) */
+
+.pending-requests {
+    table-layout: auto;
+    width: auto;
+}
+
+.pending-requests td {
+    padding: 2px 12px 2px 4px;
+}
+
 /* Queue status table */
 
 .queue-table {
