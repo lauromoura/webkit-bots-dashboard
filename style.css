@@ -63,11 +63,17 @@ tbody tr:nth-child(even) {
     margin: 2px;
 }
 
+nav {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 .linkButton {
     color: white;
     background-color: #13a4a4;
     font-size: 16px;
-    padding: 5px;
+    padding: 6px 12px;
     border-radius: 2px;
     text-decoration: none;
 }
