@@ -2,8 +2,8 @@ import { el } from "./_dom.js";
 
 const NAV_LINKS = [
     { href: "./index.html", label: "All builders", bold: true },
-    { href: "../charts.html",       label: "Test run charts" },
-    { href: "../unified.html",      label: "Unified build timing" },
+    { href: "./legacy/charts.html",  label: "Test run charts" },
+    { href: "./legacy/unified.html", label: "Unified build timing" },
     { href: "./queue.html",         label: "Queue status" },
 ];
 
