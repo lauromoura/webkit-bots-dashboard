@@ -1,31 +1,44 @@
-import { fetchAPI, getAllPendingRequests } from "../lib/api.js";
+import { fetchAPI, createAPI, getAllPendingRequests } from "../lib/api.js";
 import { buildbotBuilderURL, buildbotBuildRequestURL } from "../lib/urls.js";
 import { formatRelativeDateFromNow } from "../lib/format.js";
 import { renderPageHeader } from "../components/page-header.js";
 import { renderBuildHistoryTable } from "../components/build-history-table.js";
 import { el } from "../components/_dom.js";
 
+const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+const EWS_BASE_URL = isLocal ? "/ews/api/v2/" : "https://ews-build.webkit.org/api/v2/";
+const EWS_BUILDBOT_BASE = "https://ews-build.webkit.org/";
+
 async function init() {
     const app = document.getElementById("app");
 
     const params = new URLSearchParams(location.search);
-    const builderId = params.get("builder");
+    const postCommitId = params.get("builder");
+    const ewsId = params.get("ews-builder");
+    const builderId = postCommitId || ewsId;
+    const isEWS = !!ewsId;
 
     if (!builderId) {
         app.appendChild(el("p", null, ["No builder ID specified."]));
         return;
     }
 
+    // Select API and buildbot base URL based on mode
+    const api = isEWS ? createAPI(EWS_BASE_URL) : { fetchAPI, getAllPendingRequests };
+    const buildbotBase = isEWS ? EWS_BUILDBOT_BASE : undefined;
+
     app.appendChild(renderPageHeader("Builder detail"));
 
     // Fetch builder info
-    const builderData = await fetchAPI(`builders/${builderId}`);
+    const builderData = await api.fetchAPI(`builders/${builderId}`);
     const builderName = builderData?.builders?.[0]?.name;
 
     const titleSpan = el("span", { id: "builderTitle" });
     titleSpan.textContent = builderName || `Unknown builder ${builderId}`;
 
-    const builderURL = buildbotBuilderURL(builderId);
+    const builderURL = isEWS
+        ? `${EWS_BUILDBOT_BASE}#/builders/${builderId}`
+        : buildbotBuilderURL(builderId);
     const infoSection = el("section", null, [
         el("h2", null, ["Details for builder ", titleSpan]),
         el("ul", null, [
@@ -37,8 +50,8 @@ async function init() {
 
     // Fetch builds and pending requests in parallel
     const [requestsData, buildsData] = await Promise.all([
-        getAllPendingRequests(),
-        fetchAPI(`builders/${builderId}/builds?limit=100&order=-number&property=identifier`),
+        api.getAllPendingRequests(),
+        api.fetchAPI(`builders/${builderId}/builds?limit=100&order=-number&property=identifier`),
     ]);
 
     // Filter pending (unclaimed) requests for this builder
@@ -49,14 +62,19 @@ async function init() {
 
     let requestContent;
     if (pending.length > 0) {
-        const rows = pending.map(r => el("tr", null, [
-            el("td", null, [
-                el("a", { href: buildbotBuildRequestURL(r.buildrequestid), target: "_blank" }, [
-                    `#${r.buildrequestid}`
+        const rows = pending.map(r => {
+            const requestURL = isEWS
+                ? `${EWS_BUILDBOT_BASE}#/buildrequests/${r.buildrequestid}`
+                : buildbotBuildRequestURL(r.buildrequestid);
+            return el("tr", null, [
+                el("td", null, [
+                    el("a", { href: requestURL, target: "_blank" }, [
+                        `#${r.buildrequestid}`
+                    ]),
                 ]),
-            ]),
-            el("td", null, [formatRelativeDateFromNow(r.submitted_at, "")]),
-        ]));
+                el("td", null, [formatRelativeDateFromNow(r.submitted_at, "")]),
+            ]);
+        });
         requestContent = el("table", { className: "pending-requests" }, [
             el("thead", null, [
                 el("tr", null, [
@@ -80,7 +98,7 @@ async function init() {
     } else {
         app.appendChild(el("section", null, [
             el("h3", null, ["Build history"]),
-            renderBuildHistoryTable(parseInt(builderId, 10), buildsData.builds),
+            renderBuildHistoryTable(parseInt(builderId, 10), buildsData.builds, { buildbotBase }),
         ]));
     }
 

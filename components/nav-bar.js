@@ -1,10 +1,11 @@
 import { el } from "./_dom.js";
 
 const NAV_LINKS = [
-    { href: "./index.html", label: "All builders", bold: true },
-    { href: "./legacy/charts.html",  label: "Test run charts" },
-    { href: "./legacy/unified.html", label: "Unified build timing" },
-    { href: "./queue.html",         label: "Queue status" },
+    { href: "./index.html",         label: "Index", bold: true },
+    { href: "./results-stats.html", label: "Results Stats" },
+    { href: "./job-duration.html",  label: "Job Duration" },
+    { href: "./queue.html",         label: "Queues overview" },
+    { href: "./ews-queue.html",     label: "EWS Queues" },
 ];
 
 /**

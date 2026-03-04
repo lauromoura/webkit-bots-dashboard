@@ -1,7 +1,7 @@
 import { el } from "./_dom.js";
 import { buildbotBuilderURL, builderPageURL } from "../lib/urls.js";
 
-// Severity thresholds — adjust these to tune color coding
+// Default severity thresholds (post-commit)
 const SPINUP_THRESHOLD_SEC = 600;        // 10 minutes — normal worker spin-up time
 const PENDING_WARN_THRESHOLD = 3;
 const WAIT_WARN_THRESHOLD_SEC = 1800;    // 30 minutes
@@ -12,14 +12,18 @@ const SEVERITY_PREPARING = 2;
 const SEVERITY_WARNING = 3;
 const SEVERITY_CRITICAL = 4;
 
-export function classifySeverity(pendingCount, oldestWaitSec, connectedWorkers, totalWorkers, pausedWorkers, runningCount) {
+export function classifySeverity(pendingCount, oldestWaitSec, connectedWorkers, totalWorkers, pausedWorkers, runningCount, thresholds = {}) {
+    const spinupThreshold = thresholds.spinupThresholdSec ?? SPINUP_THRESHOLD_SEC;
+    const pendingWarnThreshold = thresholds.pendingWarnThreshold ?? PENDING_WARN_THRESHOLD;
+    const waitWarnThreshold = thresholds.waitWarnThresholdSec ?? WAIT_WARN_THRESHOLD_SEC;
+
     if (pendingCount === 0 && runningCount === 0)
         return SEVERITY_IDLE;
 
     if (runningCount > 0) {
         // When builds are running, oldest wait grows to match build duration —
         // only the pending COUNT indicates a real backlog.
-        if (pendingCount >= PENDING_WARN_THRESHOLD)
+        if (pendingCount >= pendingWarnThreshold)
             return SEVERITY_WARNING;
         return SEVERITY_WORKING;
     }
@@ -28,13 +32,13 @@ export function classifySeverity(pendingCount, oldestWaitSec, connectedWorkers, 
     const workersAvailable = connectedWorkers > 0 && pausedWorkers < totalWorkers;
     if (workersAvailable) {
         // Nothing running despite available workers — long wait IS abnormal
-        if (pendingCount >= PENDING_WARN_THRESHOLD || oldestWaitSec > WAIT_WARN_THRESHOLD_SEC)
+        if (pendingCount >= pendingWarnThreshold || oldestWaitSec > waitWarnThreshold)
             return SEVERITY_WARNING;
         return SEVERITY_WORKING;
     }
 
     // No workers available, pending > 0, running == 0
-    if (oldestWaitSec >= SPINUP_THRESHOLD_SEC)
+    if (oldestWaitSec >= spinupThreshold)
         return SEVERITY_CRITICAL;
     return SEVERITY_PREPARING;
 }
@@ -56,9 +60,14 @@ function formatDuration(seconds) {
  * @param {Object} builder - { builderid, name, tags }
  * @param {Array} requests - build requests for this builder (incomplete only)
  * @param {Array} workers - workers configured for this builder
+ * @param {Object} [options]
+ * @param {boolean} [options.showIdleWorkers] - show Idle Workers column
+ * @param {Object} [options.thresholds] - severity threshold overrides
+ * @param {string} [options.buildbotBase] - base URL for buildbot links (e.g. "https://ews-build.webkit.org/")
  * @returns {{ row: HTMLTableRowElement, severity: number }}
  */
-export function renderQueueRow(builder, requests, workers) {
+export function renderQueueRow(builder, requests, workers, options = {}) {
+    const { showIdleWorkers = false, thresholds = {}, buildbotBase } = options;
     const now = Math.floor(Date.now() / 1000);
 
     // Split requests into pending (unclaimed) and running (claimed but not complete)
@@ -78,15 +87,22 @@ export function renderQueueRow(builder, requests, workers) {
     const connectedWorkers = workers.filter(w => w.connected_to.length > 0).length;
     const pausedWorkers = workers.filter(w => w.paused).length;
 
-    const severity = classifySeverity(pending.length, oldestWaitSec, connectedWorkers, totalWorkers, pausedWorkers, running.length);
+    const severity = classifySeverity(pending.length, oldestWaitSec, connectedWorkers, totalWorkers, pausedWorkers, running.length, thresholds);
 
-    // Builder name cell
-    const nameCell = el("td", { className: "builderName" }, [
-        el("a", { href: builderPageURL(builder.builderid) }, [builder.name]),
-        " (",
-        el("a", { href: buildbotBuilderURL(builder.builderid), target: "_blank" }, ["buildbot"]),
-        ")",
-    ]);
+    // Builder name cell — name links to local detail page, with external buildbot link
+    const nameCell = el("td", { className: "builderName" });
+    if (buildbotBase) {
+        // EWS: name links to local detail page with ews-builder param
+        nameCell.appendChild(el("a", { href: `./builder.html?ews-builder=${builder.builderid}` }, [builder.name]));
+        nameCell.appendChild(document.createTextNode(" ("));
+        nameCell.appendChild(el("a", { href: `${buildbotBase}#/builders/${builder.builderid}`, target: "_blank" }, ["buildbot"]));
+        nameCell.appendChild(document.createTextNode(")"));
+    } else {
+        nameCell.appendChild(el("a", { href: builderPageURL(builder.builderid) }, [builder.name]));
+        nameCell.appendChild(document.createTextNode(" ("));
+        nameCell.appendChild(el("a", { href: buildbotBuilderURL(builder.builderid), target: "_blank" }, ["buildbot"]));
+        nameCell.appendChild(document.createTextNode(")"));
+    }
 
     // Pending cell
     const pendingCell = el("td", { className: "queue-status", "data-sort": `${pending.length}` }, [
@@ -116,6 +132,13 @@ export function renderQueueRow(builder, requests, workers) {
         workersText += ` (${pausedWorkers} paused)`;
     const workersCell = el("td", { className: "queue-status", "data-sort": `${connectedWorkers}` }, [workersText]);
 
+    // Idle Workers cell (optional)
+    let idleWorkersCell;
+    if (showIdleWorkers) {
+        const idleCount = Math.max(0, connectedWorkers - pausedWorkers - running.length);
+        idleWorkersCell = el("td", { className: "queue-status", "data-sort": `${idleCount}` }, [`${idleCount}`]);
+    }
+
     // Status cell
     const statusLabels = ["Idle", "Working", "Preparing", "Warning", "Critical"];
     const statusClasses = ["queue-idle", "queue-working", "queue-preparing", "queue-warning", "queue-critical"];
@@ -123,7 +146,12 @@ export function renderQueueRow(builder, requests, workers) {
         statusLabels[severity],
     ]);
 
-    const row = el("tr", null, [nameCell, pendingCell, waitCell, runningCell, workersCell, statusCell]);
+    const cells = [nameCell, pendingCell, waitCell, runningCell, workersCell];
+    if (idleWorkersCell)
+        cells.push(idleWorkersCell);
+    cells.push(statusCell);
+
+    const row = el("tr", null, cells);
 
     return { row, severity };
 }

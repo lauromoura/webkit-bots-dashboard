@@ -11,7 +11,13 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const url = require("url");
-const { BUILDERS, generateBuilds, queryBuilds, generateWorkers, generateBuildRequests, queryBuildRequests } = require("./data.js");
+const {
+    BUILDERS, EWS_BUILDERS,
+    generateBuilds, generateEWSBuilds, queryBuilds,
+    generateWorkers, generateBuildRequests,
+    generateEWSWorkers, generateEWSBuildRequests,
+    queryBuildRequests,
+} = require("./data.js");
 
 // Parse CLI arguments
 const args = process.argv.slice(2);
@@ -32,7 +38,15 @@ const buildsMap = generateBuilds(seed);
 const workersData = generateWorkers(seed);
 const buildRequestsData = generateBuildRequests(seed);
 const builderById = new Map(BUILDERS.map(b => [b.builderid, b]));
+
+// EWS mock data
+const ewsBuildsMap = generateEWSBuilds(seed);
+const ewsWorkersData = generateEWSWorkers(seed);
+const ewsBuildRequestsData = generateEWSBuildRequests(seed);
+const ewsBuilderById = new Map(EWS_BUILDERS.map(b => [b.builderid, b]));
+
 console.log(`Generated builds for ${BUILDERS.length} builders, ${workersData.length} workers, ${buildRequestsData.length} build requests.`);
+console.log(`Generated EWS data: ${EWS_BUILDERS.length} builders, ${ewsWorkersData.length} workers, ${ewsBuildRequestsData.length} build requests.`);
 
 // MIME types for static file serving
 const MIME_TYPES = {
@@ -48,12 +62,19 @@ const MIME_TYPES = {
 // Project root is the parent of mock-server/
 const STATIC_ROOT = path.resolve(__dirname, "..");
 
-// Route patterns
+// Route patterns — post-commit (build.webkit.org)
 const BUILDERS_LIST = /^\/api\/v2\/builders\/?$/;
 const BUILDER_BY_ID = /^\/api\/v2\/builders\/(\d+)\/?$/;
 const BUILDER_BUILDS = /^\/api\/v2\/builders\/(\d+)\/builds\/?$/;
 const BUILD_REQUESTS = /^\/api\/v2\/buildrequests\/?$/;
 const WORKERS_LIST = /^\/api\/v2\/workers\/?$/;
+
+// Route patterns — EWS (ews-build.webkit.org)
+const EWS_BUILDERS_LIST = /^\/ews\/api\/v2\/builders\/?$/;
+const EWS_BUILDER_BY_ID = /^\/ews\/api\/v2\/builders\/(\d+)\/?$/;
+const EWS_BUILDER_BUILDS = /^\/ews\/api\/v2\/builders\/(\d+)\/builds\/?$/;
+const EWS_BUILD_REQUESTS = /^\/ews\/api\/v2\/buildrequests\/?$/;
+const EWS_WORKERS_LIST = /^\/ews\/api\/v2\/workers\/?$/;
 
 const server = http.createServer((req, res) => {
     const parsed = url.parse(req.url, true);
@@ -62,6 +83,8 @@ const server = http.createServer((req, res) => {
 
     // API routes
     let match;
+
+    // --- Post-commit API routes ---
 
     if ((match = pathname.match(BUILD_REQUESTS))) {
         const response = queryBuildRequests(buildRequestsData, params);
@@ -101,6 +124,48 @@ const server = http.createServer((req, res) => {
         if (!builder) {
             res.writeHead(404, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ error: "Builder not found" }));
+            return;
+        }
+        sendJSON(res, { builders: [builder] });
+        return;
+    }
+
+    // --- EWS API routes ---
+
+    if ((match = pathname.match(EWS_BUILD_REQUESTS))) {
+        const response = queryBuildRequests(ewsBuildRequestsData, params);
+        sendJSON(res, response);
+        return;
+    }
+
+    if ((match = pathname.match(EWS_WORKERS_LIST))) {
+        sendJSON(res, { workers: ewsWorkersData, meta: { total: ewsWorkersData.length } });
+        return;
+    }
+
+    if ((match = pathname.match(EWS_BUILDERS_LIST))) {
+        sendJSON(res, { builders: EWS_BUILDERS, meta: { total: EWS_BUILDERS.length } });
+        return;
+    }
+
+    if ((match = pathname.match(EWS_BUILDER_BUILDS))) {
+        const builderId = parseInt(match[1], 10);
+        const builds = ewsBuildsMap.get(builderId);
+        if (!builds) {
+            sendJSON(res, { builds: [], meta: { total: 0 } });
+            return;
+        }
+        const response = queryBuilds(builds, params);
+        sendJSON(res, response);
+        return;
+    }
+
+    if ((match = pathname.match(EWS_BUILDER_BY_ID))) {
+        const builderId = parseInt(match[1], 10);
+        const builder = ewsBuilderById.get(builderId);
+        if (!builder) {
+            res.writeHead(404, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: "EWS Builder not found" }));
             return;
         }
         sendJSON(res, { builders: [builder] });
@@ -150,6 +215,6 @@ function serveStatic(req, res, pathname) {
 
 server.listen(port, "localhost", () => {
     console.log(`Mock Buildbot server running at http://localhost:${port}/`);
-    console.log(`Serving ${BUILDERS.length} builders with mock build data.`);
+    console.log(`Serving ${BUILDERS.length} builders (post-commit) + ${EWS_BUILDERS.length} builders (EWS).`);
     console.log("Press Ctrl+C to stop.");
 });

@@ -47,6 +47,29 @@ const BUILDERS = [
     { builderid: 210, name: "Apple macOS Release Build (retired)",            tags: ["Build", "Release", "macOS"],                     masterids: [] },
 ];
 
+// EWS (Early Warning System) builder definitions — pre-commit instance.
+// Includes WPE/GTK/JSC-ARMv7 queues we maintain, plus Mac/iOS builders
+// that should be filtered out by the client.
+const EWS_BUILDERS = [
+    // WPE queues
+    { builderid: 10, name: "EWS WPE Linux Release Build",              tags: ["Build", "WPE", "Release"],               masterids: [1] },
+    { builderid: 11, name: "EWS WPE Linux Debug Build",                tags: ["Build", "WPE", "Debug"],                 masterids: [1] },
+    { builderid: 12, name: "EWS WPE Linux Release Tests",              tags: ["Tests", "WPE", "Release"],               masterids: [1] },
+    { builderid: 13, name: "EWS WPE Linux Release JS Tests",           tags: ["Tests", "WPE", "Release", "JS"],         masterids: [1] },
+    // GTK queues
+    { builderid: 20, name: "EWS GTK Linux Release Build",              tags: ["Build", "GTK", "Release"],               masterids: [1] },
+    { builderid: 21, name: "EWS GTK Linux Debug Build",                tags: ["Build", "GTK", "Debug"],                 masterids: [1] },
+    { builderid: 22, name: "EWS GTK Linux Release Tests",              tags: ["Tests", "GTK", "Release"],               masterids: [1] },
+    { builderid: 23, name: "EWS GTK Linux Release JS Tests",           tags: ["Tests", "GTK", "Release", "JS"],         masterids: [1] },
+    // JSC-ARMv7
+    { builderid: 30, name: "EWS JSC-ARMv7-Thumb2 Release Tests",       tags: ["Tests", "JSCOnly", "Release"],           masterids: [1] },
+    // Mac/iOS builders (should be filtered out by client)
+    { builderid: 50, name: "EWS Apple macOS Release Build",            tags: ["Build", "macOS", "Release"],             masterids: [1] },
+    { builderid: 51, name: "EWS Apple macOS Release Tests",            tags: ["Tests", "macOS", "Release"],             masterids: [1] },
+    { builderid: 52, name: "EWS Apple iOS Release Build",              tags: ["Build", "iOS", "Release"],               masterids: [1] },
+    { builderid: 53, name: "EWS Apple iOS Simulator Release Tests",    tags: ["Tests", "iOS", "Release"],               masterids: [1] },
+];
+
 const FAILURE_STRINGS_BUILD = [
     "failed (failure)",
     "build failed",
@@ -415,6 +438,203 @@ function generateBuildRequests(seed) {
     return filtered;
 }
 
+function generateEWSBuilds(seed) {
+    const rng = createRNG(seed + 6666); // offset seed for different data
+    const now = Math.floor(Date.now() / 1000);
+    const buildsMap = new Map();
+
+    // Assign health profiles
+    const healthProfiles = new Map();
+    for (const builder of EWS_BUILDERS) {
+        const roll = rng();
+        if (roll < 0.5) healthProfiles.set(builder.builderid, "healthy");
+        else if (roll < 0.8) healthProfiles.set(builder.builderid, "flaky");
+        else healthProfiles.set(builder.builderid, "broken");
+    }
+
+    // Decide which ~30% of builders have an in-progress newest build
+    const inProgressBuilders = new Set();
+    for (const builder of EWS_BUILDERS) {
+        if (rng() < 0.3) inProgressBuilders.add(builder.builderid);
+    }
+
+    for (const builder of EWS_BUILDERS) {
+        const isBuildTagged = builder.tags.includes("Build");
+        const health = healthProfiles.get(builder.builderid);
+        const hasInProgress = inProgressBuilders.has(builder.builderid);
+        const buildCount = 10;
+        const builds = [];
+        let cursor = now;
+        const idCounter = 280456 - Math.floor(rng() * 50);
+
+        for (let i = 0; i < buildCount; i++) {
+            const buildNumber = buildCount - i + 50;
+            const isFirst = i === 0;
+            const isInProgress = isFirst && hasInProgress;
+
+            const minDuration = isBuildTagged ? 15 * 60 : 30 * 60;
+            const maxDuration = isBuildTagged ? 45 * 60 : 90 * 60;
+            const duration = Math.floor(minDuration + rng() * (maxDuration - minDuration));
+            const gap = Math.floor(5 * 60 + rng() * 25 * 60);
+
+            let complete, results, stateString;
+            if (isInProgress) {
+                complete = false;
+                results = null;
+                stateString = isBuildTagged ? "building" : "running layout-tests";
+                cursor -= Math.floor(duration * rng());
+            } else {
+                complete = true;
+                let success;
+                if (health === "healthy") {
+                    success = rng() < 0.9;
+                } else if (health === "flaky") {
+                    success = rng() < 0.6;
+                } else {
+                    const completedIndex = hasInProgress ? i - 1 : i;
+                    success = completedIndex >= 3 ? rng() < 0.85 : false;
+                }
+                results = success ? 0 : 2;
+                stateString = success ? "build successful" : pickFailureString(builder, rng);
+            }
+
+            const completedAt = isInProgress ? null : cursor;
+            const startedAt = isInProgress ? cursor : cursor - duration;
+
+            builds.push({
+                builderid: builder.builderid,
+                buildid: builder.builderid * 10000 + buildNumber,
+                number: buildNumber,
+                complete,
+                results,
+                state_string: stateString,
+                started_at: startedAt,
+                complete_at: completedAt,
+                _identifier: `${idCounter - i}@main`,
+            });
+
+            if (!isInProgress) {
+                cursor = startedAt - gap;
+            }
+        }
+
+        buildsMap.set(builder.builderid, builds);
+    }
+
+    return buildsMap;
+}
+
+// --- EWS mock data generators ---
+
+function generateEWSWorkers(seed) {
+    const rng = createRNG(seed + 7777); // offset seed for different data
+    const workers = [];
+    let workerId = 1;
+
+    for (const builder of EWS_BUILDERS) {
+        // EWS has more workers per queue (3-6)
+        const workerCount = 3 + Math.floor(rng() * 4);
+        for (let i = 0; i < workerCount; i++) {
+            const connected = rng() < 0.80;
+            const paused = connected && rng() < 0.08;
+            workers.push({
+                workerid: workerId,
+                name: `ews-${builder.name.replace(/\s+/g, "-").toLowerCase()}-worker-${i + 1}`,
+                connected_to: connected ? [{ masterid: 1 }] : [],
+                configured_on: [
+                    { builderid: builder.builderid, masterid: 1 },
+                ],
+                paused,
+            });
+            workerId++;
+        }
+    }
+
+    // Force-disconnect workers for builder 30 (JSC-ARMv7) to test Critical state
+    for (const w of workers) {
+        const builderIds = w.configured_on.map(c => c.builderid);
+        if (builderIds.includes(30))
+            w.connected_to = [];
+    }
+
+    return workers;
+}
+
+function generateEWSBuildRequests(seed) {
+    const rng = createRNG(seed + 8888);
+    const now = Math.floor(Date.now() / 1000);
+    const requests = [];
+    let requestId = 1;
+
+    for (const builder of EWS_BUILDERS) {
+        // EWS has higher volume — more builders with pending requests
+        const roll = rng();
+        let pendingCount, claimedCount;
+
+        if (roll < 0.30) {
+            // 30%: no pending
+            pendingCount = 0;
+            claimedCount = rng() < 0.5 ? Math.floor(1 + rng() * 3) : 0;
+        } else if (roll < 0.70) {
+            // 40%: 1-4 pending
+            pendingCount = 1 + Math.floor(rng() * 4);
+            claimedCount = Math.floor(1 + rng() * 3);
+        } else {
+            // 30%: 5-10 pending (heavier backlog)
+            pendingCount = 5 + Math.floor(rng() * 6);
+            claimedCount = Math.floor(2 + rng() * 3);
+        }
+
+        // Generate claimed (in-progress) requests
+        for (let i = 0; i < claimedCount; i++) {
+            const submittedAt = now - Math.floor(5 * 60 + rng() * 40 * 60);
+            const claimedAt = submittedAt + Math.floor(rng() * 3 * 60);
+            requests.push({
+                buildrequestid: requestId++,
+                builderid: builder.builderid,
+                submitted_at: submittedAt,
+                complete: false,
+                claimed: true,
+                claimed_at: claimedAt,
+                claimed_by_masterid: 1,
+            });
+        }
+
+        // Generate unclaimed (pending) requests
+        for (let i = 0; i < pendingCount; i++) {
+            const age = Math.floor(rng() * 45 * 60); // 0-45 min ago
+            requests.push({
+                buildrequestid: requestId++,
+                builderid: builder.builderid,
+                submitted_at: now - age,
+                complete: false,
+                claimed: false,
+                claimed_at: null,
+                claimed_by_masterid: null,
+            });
+        }
+    }
+
+    // Override builder 30 (JSC-ARMv7) — pending with no workers → Critical
+    const overrideIds = new Set([30]);
+    const filtered = requests.filter(r => !overrideIds.has(r.builderid));
+    let nextId = requestId;
+
+    for (let i = 0; i < 3; i++) {
+        filtered.push({
+            buildrequestid: nextId++,
+            builderid: 30,
+            submitted_at: now - 12 * 60,
+            complete: false,
+            claimed: false,
+            claimed_at: null,
+            claimed_by_masterid: null,
+        });
+    }
+
+    return filtered;
+}
+
 function queryBuildRequests(requests, params) {
     let filtered = requests.slice();
 
@@ -425,4 +645,15 @@ function queryBuildRequests(requests, params) {
     return { buildrequests: filtered, meta: { total: filtered.length } };
 }
 
-module.exports = { BUILDERS, generateBuilds, queryBuilds, generateWorkers, generateBuildRequests, queryBuildRequests };
+module.exports = {
+    BUILDERS,
+    EWS_BUILDERS,
+    generateBuilds,
+    generateEWSBuilds,
+    queryBuilds,
+    generateWorkers,
+    generateBuildRequests,
+    generateEWSWorkers,
+    generateEWSBuildRequests,
+    queryBuildRequests,
+};

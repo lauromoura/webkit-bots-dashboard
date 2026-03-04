@@ -8,12 +8,18 @@ import { formatRelativeDate, formatRelativeDateFromNow } from "../lib/format.js"
  *
  * @param {number} builderId
  * @param {Object} build
+ * @param {Object} [options]
+ * @param {string} [options.buildbotBase] - base URL for buildbot links (e.g. "https://ews-build.webkit.org/")
  * @returns {HTMLTableRowElement}
  */
-export function renderBuildHistoryRow(builderId, build) {
+export function renderBuildHistoryRow(builderId, build, options = {}) {
+    const { buildbotBase } = options;
     // Job number cell (colored by status)
+    const buildURL = buildbotBase
+        ? `${buildbotBase}#/builders/${builderId}/builds/${build.number}`
+        : buildbotBuildURL(builderId, build.number);
     const numberLink = el("a", {
-        href: buildbotBuildURL(builderId, build.number),
+        href: buildURL,
     }, [`#${build.number}`]);
     const numberCell = el("td", { className: "jobNumber", "data-sort": `${build.number}` }, [numberLink]);
 
