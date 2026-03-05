@@ -35,6 +35,8 @@ export function renderBuildHistoryTable(builderId, builds, options = {}) {
     }
 
     const table = el("table", { id: "jobsList", className: "build-history" }, [thead, tbody]);
+    if (options.buildbotBase)
+        table.classList.add("build-history--ews");
 
     new Tablesort(table);
 

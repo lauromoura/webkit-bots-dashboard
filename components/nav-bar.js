@@ -14,9 +14,12 @@ const NAV_LINKS = [
  * @returns {HTMLElement}
  */
 export function renderNavBar() {
+    const currentPath = location.pathname.replace(/\/$/, "/index.html");
     const links = NAV_LINKS.map(({ href, label, bold }) => {
+        const isActive = currentPath.endsWith(href.replace("./", "/"));
+        const classes = "linkButton" + (isActive ? " active" : "");
         const content = bold ? el("b", null, [label]) : label;
-        return el("a", { className: "linkButton", href }, [content]);
+        return el("a", { className: classes, href }, [content]);
     });
     return el("nav", null, links);
 }
