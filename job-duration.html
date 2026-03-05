@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>WPE Build Job Duration Monitor</title>
+    <link rel="stylesheet" href="./style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <style>
@@ -155,6 +156,11 @@
 </head>
 <body>
     <h1>WPE Build Job Duration Monitor</h1>
+    <nav id="nav-bar"></nav>
+    <script type="module">
+        import { renderNavBar } from "./components/nav-bar.js";
+        document.getElementById("nav-bar").replaceWith(renderNavBar());
+    </script>
 
     <p>
     This page processes build data from the <a href="https://build.webkit.org/">BuildBot API</a>.

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>WPE Results Stats</title>
+    <link rel="stylesheet" href="./style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -105,6 +106,11 @@
 </head>
 <body>
     <h1>WPE Release Test Results</h1>
+    <nav id="nav-bar"></nav>
+    <script type="module">
+        import { renderNavBar } from "./components/nav-bar.js";
+        document.getElementById("nav-bar").replaceWith(renderNavBar());
+    </script>
 
     <p>
     This page processes the json output from https://results.webkit.org/, focusing on the results from the

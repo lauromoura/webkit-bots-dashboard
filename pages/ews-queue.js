@@ -1,3 +1,4 @@
+import { startAutoRefresh } from "../lib/auto-refresh.js";
 import { createAPI } from "../lib/api.js";
 import { renderPageHeader } from "../components/page-header.js";
 import { renderQueueTable } from "../components/queue-table.js";
@@ -99,6 +100,7 @@ async function init() {
     app.appendChild(table);
 }
 
+startAutoRefresh();
 init().catch(err => {
     console.error("EWS queue page failed to initialize:", err);
     document.getElementById("app").appendChild(

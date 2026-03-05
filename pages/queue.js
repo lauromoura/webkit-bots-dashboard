@@ -1,3 +1,4 @@
+import { startAutoRefresh } from "../lib/auto-refresh.js";
 import { getBuilders, getAllPendingRequests, getAllWorkers } from "../lib/api.js";
 import { classifyByTier } from "../lib/builders.js";
 import { renderPageHeader } from "../components/page-header.js";
@@ -97,6 +98,7 @@ async function init() {
     }
 }
 
+startAutoRefresh();
 init().catch(err => {
     console.error("Queue page failed to initialize:", err);
     document.getElementById("app").appendChild(

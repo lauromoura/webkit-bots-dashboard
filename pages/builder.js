@@ -1,3 +1,4 @@
+import { startAutoRefresh } from "../lib/auto-refresh.js";
 import { fetchAPI, createAPI, getAllPendingRequests } from "../lib/api.js";
 import { buildbotBuilderURL, buildbotBuildRequestURL } from "../lib/urls.js";
 import { formatRelativeDateFromNow } from "../lib/format.js";
@@ -103,11 +104,29 @@ async function init() {
     }
 
     app.appendChild(el("br"));
+
+    const backLabel = isEWS ? "Back to EWS Queues" : "Back to builder list";
+    const backHref = isEWS ? "./ews-queue.html" : "./";
+    const referrer = document.referrer;
+    let breadcrumbBack = { label: backLabel, href: backHref };
+    if (referrer) {
+        try {
+            const refURL = new URL(referrer);
+            if (refURL.origin === location.origin) {
+                const refPath = refURL.pathname;
+                if (refPath.endsWith("/queue.html"))
+                    breadcrumbBack = { label: "Back to Queues overview", href: "./queue.html" };
+                else if (refPath.endsWith("/ews-queue.html"))
+                    breadcrumbBack = { label: "Back to EWS Queues", href: "./ews-queue.html" };
+            }
+        } catch { /* ignore invalid referrer */ }
+    }
     app.appendChild(el("footer", null, [
-        el("a", { href: "./" }, ["Back to builder list"]),
+        el("a", { href: breadcrumbBack.href }, [breadcrumbBack.label]),
     ]));
 }
 
+startAutoRefresh();
 init().catch(err => {
     console.error("Builder page failed to initialize:", err);
     document.getElementById("app").appendChild(

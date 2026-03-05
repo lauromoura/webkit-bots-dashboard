@@ -1,3 +1,4 @@
+import { startAutoRefresh } from "../lib/auto-refresh.js";
 import { getBuilders } from "../lib/api.js";
 import { classifyByTier, findWPEReleaseTester, findGTKReleaseTester } from "../lib/builders.js";
 import { renderPageHeader } from "../components/page-header.js";
@@ -69,4 +70,5 @@ async function init() {
     tier2Section.after(tier3Section);
 }
 
+startAutoRefresh();
 init();
