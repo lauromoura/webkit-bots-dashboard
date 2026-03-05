@@ -32,6 +32,10 @@ tbody tr:nth-child(even) {
     background-color: rgb(243, 243, 243);
 }
 
+tbody tr:hover {
+    background-color: rgb(220, 220, 220);
+}
+
 .buildTime {
     text-align: right;
     padding-right: 2px;
