@@ -14,14 +14,13 @@ export function renderPageHeader(title) {
         el("h1", null, [title]),
     ]));
 
+    fragment.appendChild(renderNavBar());
+
     const timestampSpan = el("span", { id: "timestamp", textContent: new Date().toString() });
     fragment.appendChild(el("div", { id: "metadata" }, [
         "Last sync: ",
         timestampSpan,
     ]));
-
-    fragment.appendChild(el("br"));
-    fragment.appendChild(renderNavBar());
 
     return fragment;
 }
