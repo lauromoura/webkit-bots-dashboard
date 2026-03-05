@@ -2,12 +2,12 @@
 
 ## Quick fixes / Low-hanging fruit
 
-- [ ] Add `<meta name="viewport" content="width=device-width, initial-scale=1">` to all HTML pages — responsive CSS breakpoint at 1024px exists in `style.css` but won't trigger on mobile without it
-- [ ] Highlight the current page in the nav bar (currently all links look identical)
-- [ ] Fix responsive CSS label: line 219 of `style.css` hardcodes `"Identifier"` in the `::before` pseudo-element — should say "Base Identifier" when viewing EWS builder history (CSS-only limitation; likely needs a class-based approach)
+- [x] Add `<meta name="viewport" content="width=device-width, initial-scale=1">` to all HTML pages — responsive CSS breakpoint at 1024px exists in `style.css` but won't trigger on mobile without it
+- [x] Highlight the current page in the nav bar (currently all links look identical)
+- [x] Fix responsive CSS label: line 219 of `style.css` hardcodes `"Identifier"` in the `::before` pseudo-element — should say "Base Identifier" when viewing EWS builder history (CSS-only limitation; likely needs a class-based approach)
 - [x] Add auto-refresh to `builder.html` (the only monitoring page without it)
-- [ ] Remove unused `formatSeconds()` from `lib/format.js`
-- [ ] Replace deprecated `substr()` with `slice()` in `lib/format.js:41`
+- [x] Remove unused `formatSeconds()` from `lib/format.js`
+- [x] Replace deprecated `substr()` with `slice()` in `lib/format.js:41`
 
 ## Bugs & code safety
 
@@ -55,7 +55,6 @@
 - [ ] **Centralize configuration** — severity thresholds (`queue-row.js:5-7`), EWS name filters (`ews-queue.js:21`), tier section definitions (`queue.js:7-14` / `tiered.js:8-15`), and API base URLs are hardcoded in multiple places
 - [ ] **Consistent API factory pattern** — `builder.js:27` mixes `createAPI()` factory and named exports in `{ fetchAPI, getAllPendingRequests }`; pick one pattern
 - [ ] **Add SRI integrity hashes** to CDN `<script>` tags (Tablesort, Chart.js) in all HTML files
-- [ ] **Replace deprecated `substr()`** — `lib/format.js:41` uses `substr()` which is deprecated; use `slice()` instead (also listed in Quick fixes)
 - [ ] **Remove or consume unused `RESULT_CODES`** — `lib/api.js` defines WARNINGS/EXCEPTION/RETRY/CANCELLED but only SUCCESS and FAILURE are ever checked
 
 ## Accessibility
