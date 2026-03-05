@@ -5,7 +5,7 @@
 - [ ] Add `<meta name="viewport" content="width=device-width, initial-scale=1">` to all HTML pages — responsive CSS breakpoint at 1024px exists in `style.css` but won't trigger on mobile without it
 - [ ] Highlight the current page in the nav bar (currently all links look identical)
 - [ ] Fix responsive CSS label: line 219 of `style.css` hardcodes `"Identifier"` in the `::before` pseudo-element — should say "Base Identifier" when viewing EWS builder history (CSS-only limitation; likely needs a class-based approach)
-- [ ] Add auto-refresh to `builder.html` (the only monitoring page without it)
+- [x] Add auto-refresh to `builder.html` (the only monitoring page without it)
 - [ ] Remove unused `formatSeconds()` from `lib/format.js`
 - [ ] Replace deprecated `substr()` with `slice()` in `lib/format.js:41`
 
@@ -21,9 +21,9 @@
 ## UX improvements (medium effort)
 
 - [ ] Loading indicators — pages show nothing while data fetches; add a spinner or skeleton
-- [ ] Replace `<meta http-equiv="refresh">` with JS-based refresh that preserves scroll position
+- [x] Replace `<meta http-equiv="refresh">` with JS-based auto-refresh (`lib/auto-refresh.js`) that tracks elapsed time and respects tab visibility
 - [ ] Distinguish more build result types visually (WARNINGS, EXCEPTION, RETRY, CANCELLED — currently only SUCCESS vs FAILURE get colors)
-- [ ] Add breadcrumb / smarter "back" navigation on builder detail (currently always links to `index.html`, even if you came from a queue page)
+- [x] Add breadcrumb / smarter "back" navigation on builder detail (referrer-aware, links back to originating page)
 - [ ] Add build status filtering on builder detail page
 - [ ] Add search/filter capability on the tiered view
 - [ ] Pagination or "load more" for builder detail (currently hard-capped at 100 builds)
@@ -34,7 +34,7 @@
 `job-duration.html` and `results-stats.html` are fully self-contained with ~200 lines of duplicated inline CSS and no nav bar — navigation to them is one-way.
 
 - [ ] Migrate them to the shared module/component system
-- [ ] At minimum, add a nav bar or "back to dashboard" link
+- [x] At minimum, add a nav bar or "back to dashboard" link — added nav bar and shared stylesheet to both pages
 
 ## Data & reliability
 
