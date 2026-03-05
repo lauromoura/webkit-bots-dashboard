@@ -39,6 +39,8 @@ export function renderBuilderTable(builders) {
 
     Promise.all(promises).then(() => {
         new Tablesort(table);
+    }).catch(err => {
+        console.error("Failed to load builder data:", err);
     });
 
     return table;

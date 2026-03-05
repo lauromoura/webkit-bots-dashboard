@@ -97,4 +97,9 @@ async function init() {
     }
 }
 
-init();
+init().catch(err => {
+    console.error("Queue page failed to initialize:", err);
+    document.getElementById("app").appendChild(
+        el("p", null, ["Something went wrong loading this page."])
+    );
+});

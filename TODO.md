@@ -11,12 +11,12 @@
 
 ## Bugs & code safety
 
-- [ ] **XSS risk in standalone pages** — `job-duration.html` and `results-stats.html` build HTML strings from API data and inject via `innerHTML`; should use the `el()` DOM helper like the rest of the codebase
-- [ ] **Unsafe `JSON.parse` on localStorage** — `lib/api.js:59` parses cached data with no try-catch; corrupted cache crashes the page
-- [ ] **Unguarded array access in cache probe** — `lib/api.js:69-70` accesses `probeData.builds[0]` and `[1]` without checking array length; a builder with 0–1 builds will crash
-- [ ] **Missing `.catch()` on `Promise.all()`** — `queue.js:59`, `ews-queue.js:67`, `builder-table.js:40`, `time-limit-table.js:30` — a single failed fetch silently breaks the entire page
-- [ ] **No fetch timeout** — `lib/api.js` `fetch()` calls have no timeout; a hanging API server blocks indefinitely
-- [ ] **Missing null check in builder detail** — `builder.js:96` accesses `buildsData.builds.length` without verifying `.builds` exists
+- [x] **XSS risk in standalone pages** — `job-duration.html` and `results-stats.html` build HTML strings from API data and inject via `innerHTML`; added `escapeHTML()` and `encodeURIComponent()` sanitization
+- [x] **Unsafe `JSON.parse` on localStorage** — `lib/api.js` parses cached data with no try-catch; wrapped in try-catch, removes corrupted key on failure
+- [x] **Unguarded array access in cache probe** — `lib/api.js` accesses `probeData.builds[0]` without checking array length; added `!probeData.builds ||` guard
+- [x] **Missing `.catch()` on promises** — `queue.js`, `ews-queue.js`, `builder.js`, `builder-table.js`, `time-limit-table.js` — added `.catch()` error handling to all unhandled promises
+- [x] **No fetch timeout** — `lib/api.js` `fetch()` calls have no timeout; added `AbortController` with 30s timeout
+- [x] **Missing null check in builder detail** — `builder.js` accesses `buildsData.builds.length` without verifying `.builds` exists; changed to optional chaining
 
 ## UX improvements (medium effort)
 

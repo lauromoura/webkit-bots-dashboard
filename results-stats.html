@@ -165,6 +165,12 @@
     <div id="tableContainer"></div>
 
     <script>
+        function escapeHTML(str) {
+            const div = document.createElement("div");
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
         // Function to load JSON data from a local file or URL
         async function loadData(source) {
             try {
@@ -382,7 +388,7 @@
 
                 tableHTML += `
                     <tr>
-                        <td>${result.uuid}</td>
+                        <td>${escapeHTML(String(result.uuid))}</td>
                         <td>${startTime}</td>
                         <td>${duration}</td>
                         <td>${stats.tests_unexpected_failed}</td>

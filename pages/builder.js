@@ -93,7 +93,7 @@ async function init() {
         requestContent,
     ]));
 
-    if (!buildsData || buildsData.builds.length === 0) {
+    if (!buildsData?.builds?.length) {
         app.appendChild(el("p", null, ["No builds found."]));
     } else {
         app.appendChild(el("section", null, [
@@ -108,4 +108,9 @@ async function init() {
     ]));
 }
 
-init();
+init().catch(err => {
+    console.error("Builder page failed to initialize:", err);
+    document.getElementById("app").appendChild(
+        el("p", null, ["Something went wrong loading this page."])
+    );
+});

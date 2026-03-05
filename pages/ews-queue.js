@@ -99,4 +99,9 @@ async function init() {
     app.appendChild(table);
 }
 
-init();
+init().catch(err => {
+    console.error("EWS queue page failed to initialize:", err);
+    document.getElementById("app").appendChild(
+        el("p", null, ["Something went wrong loading this page."])
+    );
+});

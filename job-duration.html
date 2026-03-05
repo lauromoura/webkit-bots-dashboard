@@ -222,6 +222,12 @@
     <div id="tableContainer"></div>
 
     <script>
+        function escapeHTML(str) {
+            const div = document.createElement("div");
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
         // Global variable for current builder
         let currentBuilderName = 'WPE-Linux-64-bit-Release-Build';
 
@@ -554,10 +560,13 @@
                 const result = getBuildResult(build);
 
                 // Create links for build number and identifier
-                const buildNumberLink = `<a href="${getBuilderPageUrl(build.number)}" target="_blank">${build.number}</a>`;
+                const safeBuildNumber = escapeHTML(String(build.number));
+                const safeIdentifier = escapeHTML(identifier);
+                const safeStatus = escapeHTML(status);
+                const buildNumberLink = `<a href="${getBuilderPageUrl(build.number)}" target="_blank">${safeBuildNumber}</a>`;
                 const identifierLink = identifier !== 'N/A'
-                    ? `<a href="https://commits.webkit.org/${identifier}" target="_blank">${identifier}</a>`
-                    : identifier;
+                    ? `<a href="https://commits.webkit.org/${encodeURIComponent(identifier)}" target="_blank">${safeIdentifier}</a>`
+                    : safeIdentifier;
 
                 tableHTML += `
                     <tr>
@@ -566,7 +575,7 @@
                         <td class="${result.cssClass}">${result.text}</td>
                         <td>${startTime}</td>
                         <td>${durationFormatted}</td>
-                        <td>${status}</td>
+                        <td>${safeStatus}</td>
                     </tr>
                 `;
             }

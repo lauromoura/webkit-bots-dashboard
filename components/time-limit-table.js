@@ -34,6 +34,8 @@ export function renderTimeLimitTable(builder) {
             tbody.appendChild(renderTimeLimitRow(build));
         }
         new Tablesort(table);
+    }).catch(err => {
+        console.error("Failed to load time-limit data:", err);
     });
 
     return table;
