@@ -180,16 +180,25 @@ function findStuckRequests(claimed, connectedWorkers, builds) {
     const now = Math.floor(Date.now() / 1000);
     const p90 = computeP90Duration(builds);
     const durationThreshold = p90 !== null ? p90 * 2 : null;
+    const stuck = new Set();
 
-    // Heuristic 1: more claimed than connected workers → all claimed are suspect
-    if (claimed.length > connectedWorkers) return claimed;
+    // Heuristic 1: if claimed > connected workers, the oldest excess claims are suspect
+    if (claimed.length > connectedWorkers) {
+        const sorted = [...claimed].sort((a, b) => a.claimed_at - b.claimed_at);
+        const excessCount = claimed.length - connectedWorkers;
+        for (let i = 0; i < excessCount; i++)
+            stuck.add(sorted[i]);
+    }
 
     // Heuristic 2: individual claims running longer than 2× P90
     if (durationThreshold !== null) {
-        return claimed.filter(r => (now - r.claimed_at) > durationThreshold);
+        for (const r of claimed) {
+            if ((now - r.claimed_at) > durationThreshold)
+                stuck.add(r);
+        }
     }
 
-    return [];
+    return [...stuck];
 }
 
 startAutoRefresh();
