@@ -1,5 +1,5 @@
 import { startAutoRefresh } from "../lib/auto-refresh.js";
-import { fetchAPI, createAPI, getAllPendingRequests, getWorkerNames } from "../lib/api.js";
+import { fetchAPI, createAPI, getAllPendingRequests, getAllWorkers } from "../lib/api.js";
 import { buildbotBuilderURL, buildbotBuildRequestURL } from "../lib/urls.js";
 import { formatRelativeDateFromNow } from "../lib/format.js";
 import { renderPageHeader } from "../components/page-header.js";
@@ -25,7 +25,7 @@ async function init() {
     }
 
     // Select API and buildbot base URL based on mode
-    const api = isEWS ? createAPI(EWS_BASE_URL) : { fetchAPI, getAllPendingRequests, getWorkerNames };
+    const api = isEWS ? createAPI(EWS_BASE_URL) : { fetchAPI, getAllPendingRequests, getAllWorkers };
     const buildbotBase = isEWS ? EWS_BUILDBOT_BASE : undefined;
 
     app.appendChild(renderPageHeader("Builder detail"));
@@ -49,18 +49,32 @@ async function init() {
     ]);
     app.appendChild(infoSection);
 
-    // Fetch builds, pending requests, and worker names in parallel
-    const [requestsData, buildsData, workerNames] = await Promise.all([
+    // Fetch builds, pending requests, and full worker data in parallel
+    const [requestsData, buildsData, allWorkers] = await Promise.all([
         api.getAllPendingRequests(),
         api.fetchAPI(`builders/${builderId}/builds?limit=100&order=-number&property=identifier`),
-        api.getWorkerNames(),
+        api.getAllWorkers(),
     ]);
 
-    // Filter pending (unclaimed) requests for this builder
+    // Derive worker names map and connected worker count for this builder
+    const id = parseInt(builderId, 10);
+    const workerNames = new Map();
+    let connectedWorkers = 0;
+    if (allWorkers) {
+        for (const w of allWorkers) {
+            workerNames.set(w.workerid, w.name);
+            const configuredHere = w.configured_on?.some(c => c.builderid === id);
+            if (configuredHere && w.connected_to?.length > 0)
+                connectedWorkers++;
+        }
+    }
+
+    // Filter requests for this builder
     const allRequests = requestsData || [];
     const pending = allRequests
-        .filter(r => r.builderid === parseInt(builderId, 10) && !r.claimed)
+        .filter(r => r.builderid === id && !r.claimed)
         .sort((a, b) => a.submitted_at - b.submitted_at);
+    const claimed = allRequests.filter(r => r.builderid === id && r.claimed);
 
     let requestContent;
     if (pending.length > 0) {
@@ -95,6 +109,28 @@ async function init() {
         requestContent,
     ]));
 
+    // Detect stuck jobs
+    const stuckRequests = findStuckRequests(claimed, connectedWorkers, buildsData?.builds || []);
+    if (stuckRequests.length > 0) {
+        const items = stuckRequests.map(r => {
+            const claimDuration = formatRelativeDateFromNow(r.claimed_at, " ago");
+            const requestURL = isEWS
+                ? `${EWS_BUILDBOT_BASE}#/buildrequests/${r.buildrequestid}`
+                : buildbotBuildRequestURL(r.buildrequestid);
+            return el("li", null, [
+                `Request #${r.buildrequestid} — claimed ${claimDuration}  `,
+                el("a", { href: requestURL, target: "_blank" }, ["view in buildbot"]),
+            ]);
+        });
+        const banner = el("section", { className: "queue-stuck stuck-banner" }, [
+            el("strong", null, [
+                `\u26A0 Possible stuck jobs — ${stuckRequests.length} claimed request(s) may be stuck`,
+            ]),
+            el("ul", null, items),
+        ]);
+        app.appendChild(banner);
+    }
+
     if (!buildsData?.builds?.length) {
         app.appendChild(el("p", null, ["No builds found."]));
     } else {
@@ -125,6 +161,35 @@ async function init() {
     app.appendChild(el("footer", null, [
         el("a", { href: breadcrumbBack.href }, [breadcrumbBack.label]),
     ]));
+}
+
+function computeP90Duration(builds) {
+    const durations = builds
+        .filter(b => b.complete && b.complete_at && b.started_at)
+        .slice(0, 20)
+        .map(b => b.complete_at - b.started_at)
+        .sort((a, b) => a - b);
+    if (durations.length < 5) return null;
+    const idx = Math.floor(durations.length * 0.9);
+    return durations[Math.min(idx, durations.length - 1)];
+}
+
+function findStuckRequests(claimed, connectedWorkers, builds) {
+    if (claimed.length === 0) return [];
+
+    const now = Math.floor(Date.now() / 1000);
+    const p90 = computeP90Duration(builds);
+    const durationThreshold = p90 !== null ? p90 * 2 : null;
+
+    // Heuristic 1: more claimed than connected workers → all claimed are suspect
+    if (claimed.length > connectedWorkers) return claimed;
+
+    // Heuristic 2: individual claims running longer than 2× P90
+    if (durationThreshold !== null) {
+        return claimed.filter(r => (now - r.claimed_at) > durationThreshold);
+    }
+
+    return [];
 }
 
 startAutoRefresh();

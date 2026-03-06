@@ -633,6 +633,33 @@ function generateEWSBuildRequests(seed) {
         });
     }
 
+    // Builder 30 has 0 connected workers — add 2 claimed (stuck) requests
+    // so running (2) > connectedWorkers (0) triggers the stuck-job warning.
+    for (let i = 0; i < 2; i++) {
+        filtered.push({
+            buildrequestid: nextId++,
+            builderid: 30,
+            submitted_at: now - 19 * 60 * 60,
+            complete: false,
+            claimed: true,
+            claimed_at: now - 19 * 60 * 60 + 60,
+            claimed_by_masterid: 1,
+        });
+    }
+
+    // Builder 20 (EWS GTK Debug Build) has connected workers, but add a
+    // claimed request running 20h to exercise the duration-based heuristic
+    // (claim duration >> 2× P90 of ~30min builds).
+    filtered.push({
+        buildrequestid: nextId++,
+        builderid: 20,
+        submitted_at: now - 20 * 60 * 60,
+        complete: false,
+        claimed: true,
+        claimed_at: now - 20 * 60 * 60 + 30,
+        claimed_by_masterid: 1,
+    });
+
     return filtered;
 }
 
