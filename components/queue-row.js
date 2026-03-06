@@ -124,7 +124,10 @@ export function renderQueueRow(builder, requests, workers, options = {}) {
         longestRunningSec = Math.max(...elapsed);
         runningText = `${running.length} build${running.length > 1 ? "s" : ""} (${formatDuration(longestRunningSec)})`;
     }
-    const runningCell = el("td", { className: "queue-status", "data-sort": `${longestRunningSec}` }, [runningText]);
+    const stuckJobs = running.length > connectedWorkers;
+    const runningCell = el("td", { className: `queue-status${stuckJobs ? " queue-stuck" : ""}`, "data-sort": `${longestRunningSec}` }, [
+        stuckJobs ? `${runningText} ⚠` : runningText,
+    ]);
 
     // Workers cell
     let workersText = `${connectedWorkers}/${totalWorkers} connected`;
