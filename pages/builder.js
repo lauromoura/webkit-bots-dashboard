@@ -1,5 +1,5 @@
 import { startAutoRefresh } from "../lib/auto-refresh.js";
-import { fetchAPI, createAPI, getAllPendingRequests } from "../lib/api.js";
+import { fetchAPI, createAPI, getAllPendingRequests, getWorkerNames } from "../lib/api.js";
 import { buildbotBuilderURL, buildbotBuildRequestURL } from "../lib/urls.js";
 import { formatRelativeDateFromNow } from "../lib/format.js";
 import { renderPageHeader } from "../components/page-header.js";
@@ -25,7 +25,7 @@ async function init() {
     }
 
     // Select API and buildbot base URL based on mode
-    const api = isEWS ? createAPI(EWS_BASE_URL) : { fetchAPI, getAllPendingRequests };
+    const api = isEWS ? createAPI(EWS_BASE_URL) : { fetchAPI, getAllPendingRequests, getWorkerNames };
     const buildbotBase = isEWS ? EWS_BUILDBOT_BASE : undefined;
 
     app.appendChild(renderPageHeader("Builder detail"));
@@ -49,10 +49,11 @@ async function init() {
     ]);
     app.appendChild(infoSection);
 
-    // Fetch builds and pending requests in parallel
-    const [requestsData, buildsData] = await Promise.all([
+    // Fetch builds, pending requests, and worker names in parallel
+    const [requestsData, buildsData, workerNames] = await Promise.all([
         api.getAllPendingRequests(),
         api.fetchAPI(`builders/${builderId}/builds?limit=100&order=-number&property=identifier`),
+        api.getWorkerNames(),
     ]);
 
     // Filter pending (unclaimed) requests for this builder
@@ -99,7 +100,7 @@ async function init() {
     } else {
         app.appendChild(el("section", null, [
             el("h3", null, ["Build history"]),
-            renderBuildHistoryTable(parseInt(builderId, 10), buildsData.builds, { buildbotBase }),
+            renderBuildHistoryTable(parseInt(builderId, 10), buildsData.builds, { buildbotBase, workerNames }),
         ]));
     }
 

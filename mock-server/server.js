@@ -17,6 +17,7 @@ const {
     generateWorkers, generateBuildRequests,
     generateEWSWorkers, generateEWSBuildRequests,
     queryBuildRequests,
+    assignWorkerIds,
 } = require("./data.js");
 
 // Parse CLI arguments
@@ -37,12 +38,14 @@ console.log(`Generating mock data with seed ${seed}...`);
 const buildsMap = generateBuilds(seed);
 const workersData = generateWorkers(seed);
 const buildRequestsData = generateBuildRequests(seed);
+assignWorkerIds(buildsMap, workersData);
 const builderById = new Map(BUILDERS.map(b => [b.builderid, b]));
 
 // EWS mock data
 const ewsBuildsMap = generateEWSBuilds(seed);
 const ewsWorkersData = generateEWSWorkers(seed);
 const ewsBuildRequestsData = generateEWSBuildRequests(seed);
+assignWorkerIds(ewsBuildsMap, ewsWorkersData);
 const ewsBuilderById = new Map(EWS_BUILDERS.map(b => [b.builderid, b]));
 
 console.log(`Generated builds for ${BUILDERS.length} builders, ${workersData.length} workers, ${buildRequestsData.length} build requests.`);

@@ -13,7 +13,7 @@ import { formatRelativeDate, formatRelativeDateFromNow } from "../lib/format.js"
  * @returns {HTMLTableRowElement}
  */
 export function renderBuildHistoryRow(builderId, build, options = {}) {
-    const { buildbotBase } = options;
+    const { buildbotBase, workerNames } = options;
     // Job number cell (colored by status)
     const buildURL = buildbotBase
         ? `${buildbotBase}#/builders/${builderId}/builds/${build.number}`
@@ -56,9 +56,14 @@ export function renderBuildHistoryRow(builderId, build, options = {}) {
         durationCell.textContent = `${formatRelativeDateFromNow(build.started_at)} and counting`;
     }
 
+    // Worker cell
+    const workerName = workerNames?.get(build.workerid) || (build.workerid != null ? `worker-${build.workerid}` : "unknown");
+    const workerCell = el("td", { className: "jobWorker" });
+    workerCell.textContent = workerName;
+
     // Status cell
     const statusCell = el("td", { className: "jobStatus" });
     statusCell.textContent = build.state_string;
 
-    return el("tr", null, [numberCell, identifierCell, startedCell, durationCell, statusCell]);
+    return el("tr", null, [numberCell, identifierCell, startedCell, durationCell, workerCell, statusCell]);
 }

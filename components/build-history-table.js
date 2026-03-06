@@ -6,6 +6,7 @@ const HEADER_LABELS = [
     "Identifier",
     "Started",
     "Job duration",
+    "Worker",
     "Status",
 ];
 

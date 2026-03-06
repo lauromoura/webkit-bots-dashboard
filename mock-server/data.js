@@ -303,6 +303,7 @@ function queryBuilds(builds, params) {
             state_string: b.state_string,
             started_at: b.started_at,
             complete_at: b.complete_at,
+            workerid: b.workerid,
         };
         if (includeIdentifier) {
             obj.properties = { identifier: [b._identifier, "Change"] };
@@ -645,6 +646,30 @@ function queryBuildRequests(requests, params) {
     return { buildrequests: filtered, meta: { total: filtered.length } };
 }
 
+// Assign workerid to each build based on workers' configured_on.
+function assignWorkerIds(buildsMap, workers) {
+    // Build a map: builderid → [workerid, ...]
+    const workersByBuilder = new Map();
+    for (const w of workers) {
+        for (const cfg of w.configured_on) {
+            let list = workersByBuilder.get(cfg.builderid);
+            if (!list) {
+                list = [];
+                workersByBuilder.set(cfg.builderid, list);
+            }
+            list.push(w.workerid);
+        }
+    }
+    for (const [builderId, builds] of buildsMap) {
+        const workerIds = workersByBuilder.get(builderId) || [];
+        for (let i = 0; i < builds.length; i++) {
+            builds[i].workerid = workerIds.length > 0
+                ? workerIds[i % workerIds.length]
+                : 1;
+        }
+    }
+}
+
 module.exports = {
     BUILDERS,
     EWS_BUILDERS,
@@ -656,4 +681,5 @@ module.exports = {
     generateEWSWorkers,
     generateEWSBuildRequests,
     queryBuildRequests,
+    assignWorkerIds,
 };
