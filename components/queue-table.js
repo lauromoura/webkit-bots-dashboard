@@ -51,19 +51,34 @@ export function renderQueueTable(builders, requestsByBuilder, workersByBuilder, 
     const tbody = el("tbody");
 
     // Build rows with severity for sorting
-    const rows = builders.map(builder => {
+    const rowOptions = { ...options, columnCount: labels.length };
+    const results = builders.map(builder => {
         const requests = requestsByBuilder.get(builder.builderid) || [];
         const workers = workersByBuilder.get(builder.builderid) || [];
-        return renderQueueRow(builder, requests, workers, options);
+        return renderQueueRow(builder, requests, workers, rowOptions);
     });
 
     // Sort by severity descending (worst first)
-    rows.sort((a, b) => b.severity - a.severity);
+    results.sort((a, b) => b.severity - a.severity);
 
-    for (const { row } of rows)
-        tbody.appendChild(row);
+    for (const { rows } of results) {
+        for (const row of rows)
+            tbody.appendChild(row);
+    }
 
     const table = el("table", { className: "queue-table" }, [thead, tbody]);
+
+    // After Tablesort re-orders rows, detail rows get separated from their
+    // main rows. Re-attach each detail row right after its main row.
+    // Register BEFORE `new Tablesort` so the initial default sort is caught.
+    table.addEventListener("afterSort", () => {
+        const detailRows = tbody.querySelectorAll(".worker-detail-row");
+        for (const detail of detailRows) {
+            const main = detail._mainRow;
+            if (main && main.nextSibling !== detail)
+                main.after(detail);
+        }
+    });
 
     new Tablesort(table);
 
