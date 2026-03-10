@@ -1,9 +1,10 @@
 import { startAutoRefresh } from "../lib/auto-refresh.js";
 import { fetchAPI, createAPI, getAllPendingRequests, getAllWorkers } from "../lib/api.js";
-import { buildbotBuilderURL, buildbotBuildRequestURL } from "../lib/urls.js";
+import { buildbotBuilderURL, buildbotBuildRequestURL, workerPageURL } from "../lib/urls.js";
 import { formatRelativeDateFromNow } from "../lib/format.js";
 import { renderPageHeader } from "../components/page-header.js";
 import { renderBuildHistoryTable } from "../components/build-history-table.js";
+import { classifyWorker } from "../components/queue-row.js";
 import { el } from "../components/_dom.js";
 
 const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
@@ -67,6 +68,41 @@ async function init() {
             if (configuredHere && w.connected_to?.length > 0)
                 connectedWorkers++;
         }
+    }
+
+    // Worker status bubbles
+    const WORKER_SORT_ORDER = { disconnected: 0, paused: 1, graceful: 2, connected: 3 };
+    const builderWorkers = allWorkers
+        ? allWorkers.filter(w => w.configured_on?.some(c => c.builderid === id))
+        : [];
+    if (builderWorkers.length > 0) {
+        const sortedWorkers = [...builderWorkers].sort((a, b) => {
+            return WORKER_SORT_ORDER[classifyWorker(a)] - WORKER_SORT_ORDER[classifyWorker(b)];
+        });
+        const workerEntries = sortedWorkers.map(w => {
+            const status = classifyWorker(w);
+            const workerHref = isEWS
+                ? `./worker.html?ews-worker=${w.workerid}`
+                : workerPageURL(w.workerid);
+            const attrs = { className: `worker-entry worker-${status}`, href: workerHref };
+            let label = w.name;
+            if (status === "paused") {
+                label += " (paused)";
+                const reason = w.pause_reason;
+                if (reason)
+                    attrs.title = reason;
+            } else if (status === "graceful") {
+                label += " (graceful)";
+            } else if (status === "disconnected") {
+                label += " (offline)";
+            }
+            return el("a", attrs, [label]);
+        });
+        const grid = el("div", { className: "worker-detail-grid" }, workerEntries);
+        app.appendChild(el("section", null, [
+            el("h3", null, ["Workers"]),
+            grid,
+        ]));
     }
 
     // Filter requests for this builder
