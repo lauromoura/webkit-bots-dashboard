@@ -429,17 +429,29 @@ def compute_outcomes(completed_requests):
 
 
 def compute_timing(completed_requests):
-    """Return timing stats dicts for queue_wait, execution, total.
+    """Return timing stats dicts for queue_wait, execution, total, skip_wait.
 
-    Excludes cancelled (result=6) requests and those missing claimed_at/complete_at.
+    Excludes cancelled (result=6) and skipped (result=3) requests from
+    queue_wait, execution, and total.  Skipped requests get a separate
+    skip_wait metric (claimed_at − submitted_at) since their queue wait
+    is still meaningful even though execution is near-instant.
+
     Returns None for each interval if no samples available.
     """
     wait_samples = []
     exec_samples = []
     total_samples = []
+    skip_wait_samples = []
 
     for br in completed_requests:
-        if br.get("results") == 6:
+        result = br.get("results")
+        if result == 3:
+            submitted = br.get("submitted_at")
+            claimed = br.get("claimed_at")
+            if submitted is not None and claimed is not None:
+                skip_wait_samples.append(claimed - submitted)
+            continue
+        if result == 6:
             continue
         submitted = br.get("submitted_at")
         claimed = br.get("claimed_at")
@@ -454,6 +466,7 @@ def compute_timing(completed_requests):
         "queue_wait": summary_stats(wait_samples),
         "execution": summary_stats(exec_samples),
         "total": summary_stats(total_samples),
+        "skip_wait": summary_stats(skip_wait_samples),
     }
 
 
@@ -555,6 +568,8 @@ def render_table(results, window_start, window_end, generated_at):
         lines.append(_fmt_stat_line("Queue wait:", t["queue_wait"]))
         lines.append(_fmt_stat_line("Execution:", t["execution"]))
         lines.append(_fmt_stat_line("Total:", t["total"]))
+        if t["skip_wait"] is not None:
+            lines.append(_fmt_stat_line("Skip wait:", t["skip_wait"]))
         lines.append("")
 
     return "\n".join(lines)
@@ -600,6 +615,7 @@ def render_json(results, window_start, window_end, generated_at):
                 "queue_wait": _stats_to_json(t["queue_wait"]),
                 "execution": _stats_to_json(t["execution"]),
                 "total": _stats_to_json(t["total"]),
+                "skip_wait": _stats_to_json(t["skip_wait"]),
             },
         })
 

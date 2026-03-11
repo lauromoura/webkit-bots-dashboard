@@ -87,6 +87,11 @@ P90 is omitted when fewer than 10 timing samples are available.
 - Only completed requests with both `claimed_at` and `complete_at` set are included.
 - Result = 6 (cancelled) is excluded from timing stats; the execution time of a cancelled
   job is not comparable to completed work.
+- Result = 3 (skipped) is excluded from queue wait, execution, and total timing.
+  Skipped requests complete near-instantly (~0 s execution), which skews timing
+  statistics for builders with high skip rates. Skipped requests have a separate
+  **skip wait** metric: `claimed_at − submitted_at`, measuring how long the request
+  waited in queue before being skipped.
 
 > **Caveat — claimed_at vs started_at:** `claimed_at` on a build request is when the
 > *Buildbot master* picked it up, not when the *worker* actually began executing. The true
@@ -170,7 +175,10 @@ GET builds/{buildid}/steps
 
 6. **EWS extension** — Pass `--base-url https://ews-build.webkit.org/api/v2/` and use a
    separate EWS builder list. The result semantics for "Dropped" differ (PR closed vs
-   commit superseded).
+   commit superseded). The skip/non-skip timing separation applies equally to EWS
+   queues. EWS skips (outdated hash from force-push, closed PR) produce the same
+   result=3 as post-commit skips (superseded commit). EWS queues may have higher skip
+   rates due to frequent force-pushes, making the separation especially important.
 
 ---
 
@@ -218,6 +226,7 @@ GTK-Linux-64-bit-Release-Tests  (id=42)
   Queue wait:  avg  4m12s  median  3m40s  P90  8m05s  max 14m20s
   Execution:   avg 1h22m   median 1h18m   P90 1h45m   max  2h01m
   Total:       avg 1h26m   median 1h22m   P90 1h51m   max  2h12m
+  Skip wait:   avg  2m10s  median  1m45s  max  5m30s    (n=8)
 ```
 
 ### `step-analysis.py`
