@@ -11,8 +11,8 @@
 7. [Script Interfaces](#7--script-interfaces)
 8. [Critical Files](#8--critical-files)
 9. [Verification Checklist](#9--verification-checklist)
-10. [Dashboard Design (Phase 4)](#10--dashboard-design-phase-4)
-11. [Data Pipeline (Phase 3)](#11--data-pipeline-phase-3)
+10. [Data Pipeline (Phase 2)](#10--data-pipeline-phase-2)
+11. [Dashboard Design (Phase 3)](#11--dashboard-design-phase-3)
 
 ## 1 — Purpose & Audience
 
@@ -111,9 +111,9 @@ P90 is omitted when fewer than 10 timing samples are available.
 > *Buildbot master* picked it up, not when the *worker* actually began executing. The true
 > worker start time is `builds.started_at`, accessible via the `builds` endpoint.
 > Computing accurate worker execution time requires a cross-reference to the builds
-> endpoint (see Phase 2 in the roadmap).
+> endpoint (see Phase 6 in the roadmap).
 
-### 3.4 Step-Level Analysis (Phase 2, separate script)
+### 3.4 Step-Level Analysis (Phase 4, separate script)
 
 For tester queues (e.g. `WPE-Linux-64-bit-Release-Tests`), a per-step breakdown is
 available via `step-analysis.py`.
@@ -175,7 +175,7 @@ failures per run" or "which steps produce the most flaky results".
 classes in the Buildbot master config. They can change format without notice (e.g.
 a step class update might change `"2 failures"` to `"2 test failures"`). Any parser
 would be fragile and tightly coupled to the current Buildbot configuration. The
-risk/reward ratio doesn't justify it for Phase 2.
+risk/reward ratio doesn't justify it for Phase 4.
 
 **Flagged as a future opportunity:** If failure count trends become a priority,
 `state_string` parsing is the path — but it should be paired with a validation
@@ -243,14 +243,14 @@ for inspection and future enhancement without changing the query.
 ## 5 — Limitations & Open Questions
 
 1. **claimed_at ≠ started_at** — Build request `claimed_at` is master assignment, not
-   worker start. True execution time needs the `builds` endpoint. Document as Phase 2.
+   worker start. True execution time needs the `builds` endpoint. Document as Phase 6.
 
 2. **Step name drift** — Step names may change or differ between GTK and WPE variants.
    `step-analysis.py` emits a "steps seen" summary to aid detection.
 
 3. **No historical storage** — Each run queries the live API. For trend analysis across
    multiple days, outputs must be stored externally (JSON files or a database). Noted as
-   Phase 3.
+   Phase 2.
 
 4. **Pagination** — A busy queue can exceed 500 requests per 24 h. The script paginates
    using `offset` until `len(page) < limit`, and verifies the total count against
@@ -274,14 +274,14 @@ for inspection and future enhancement without changing the query.
 | Phase | Deliverable |
 |---|---|
 | **1 (MVP)** | `digest.py` — build-request-level stats, table + JSON output |
-| **2** | `step-analysis.py` — per-step breakdown for tester queues |
-| **3a** | Data pipeline design — two-tier storage, fetch + aggregate cycle, file layout (Section 11) |
-| **3b** | `fetch-digest-data.py --mode refresh` — fetch raw requests + produce `current/*.json` |
-| **3c** | `fetch-digest-data.py --mode daily-summary` — aggregate previous day → `daily/*.json` |
-| **3d** | Cron setup — 5-min refresh cycle + 00:30 UTC daily summary |
-| **4a** | `digest.html` — Health overview + 5-day trend (HTML/CSS, no Chart.js) |
-| **4b** | Timing view (CSS bars with regression detection) |
-| **4c** | Outcome breakdown view (stacked CSS bars) |
+| **2a** | Data pipeline design — two-tier storage, fetch + aggregate cycle, file layout (Section 10) |
+| **2b** | `fetch-digest-data.py --mode refresh` — fetch raw requests + produce `current/*.json` |
+| **2c** | `fetch-digest-data.py --mode daily-summary` — aggregate previous day → `daily/*.json` |
+| **2d** | Cron setup — 5-min refresh cycle + 00:30 UTC daily summary |
+| **3a** | `digest.html` — Health overview + 5-day trend (HTML/CSS, no Chart.js) |
+| **3b** | Timing view (CSS bars with regression detection) |
+| **3c** | Outcome breakdown view (stacked CSS bars) |
+| **4** | `step-analysis.py` — per-step breakdown for tester queues |
 | **5** | EWS support (`--base-url` flag + EWS builder list) |
 | **6** | True execution time via `builds.started_at` cross-reference |
 
@@ -352,7 +352,7 @@ accidentally hammering the API with a wide time window on a busy queue.
 | `buildbot-dependency.json` | Source of truth for GTK/WPE builder → triggered-test-queue mapping |
 | `buildbot-api-reference.md` | API reference for filter operators, field names, boolean caveats |
 | `digest.py` | Phase 1 CLI script (this deliverable) |
-| `step-analysis.py` | Phase 2 CLI script (this deliverable) |
+| `step-analysis.py` | Phase 4 CLI script (this deliverable) |
 
 ---
 
@@ -371,12 +371,163 @@ accidentally hammering the API with a wide time window on a busy queue.
 
 ---
 
-## 10 — Dashboard Design (Phase 4)
+## 10 — Data Pipeline (Phase 2)
 
-### 10.1 Data source
+### 10.1 Overview
+
+Phase 3 (dashboard) needs pre-computed data. The data pipeline fetches build
+request data from the Buildbot API, stores it on disk, and keeps it fresh via
+periodic refresh. A Python service runs every 5 minutes, fetches raw requests,
+and produces pre-aggregated JSON files for each time window. The dashboard
+consumes these directly — no aggregation logic in JS.
+
+**Rationale for server-side aggregation:**
+- Avoids duplicating aggregation code (outcomes, timing stats) in JavaScript
+- Keeps frontend simple: just load and render
+- Reuses existing `digest.py` functions (`compute_outcomes`, `compute_timing`,
+  `summary_stats`, `render_json`)
+
+### 10.2 Two-tier storage
+
+| Tier | What | Retention | Purpose |
+|---|---|---|---|
+| Raw build requests | Individual request records, minimal fields | Rolling 24 h | Source data for server-side aggregation into 1h/6h/24h views |
+| Daily summaries | Aggregated per-builder stats (`render_json` format) | Indefinite | Fixed 24 h windows for 5-day trend |
+
+### 10.3 Minimal fields per raw request
+
+Only 6 fields retained from each build request (matches `digest.py` usage):
+
+```json
+{"buildrequestid": 123456, "submitted_at": 1710000000, "claimed_at": 1710000060,
+ "complete_at": 1710003600, "results": 0, "claimed": true}
+```
+
+~140 bytes per request. Everything else from the API response is discarded.
+
+### 10.4 Prototype scope
+
+Only 2 builders for initial implementation:
+- WPE-Linux-64-bit-Release-Build (id 6)
+- WPE-Linux-64-bit-Release-Tests (id 40)
+
+### 10.5 File structure
+
+```
+digest/data/
+  requests/
+    builder-6.json         # Raw requests, last 24h
+    builder-40.json        # Raw requests, last 24h
+  current/
+    1h.json                # Aggregated: all builders, last 1 hour
+    6h.json                # Aggregated: all builders, last 6 hours
+    24h.json               # Aggregated: all builders, last 24 hours
+  daily/
+    2026-03-10.json        # Aggregated daily summary (all builders)
+    2026-03-09.json
+    ...
+```
+
+Per-builder request files because each builder is fetched independently.
+`current/*.json` and `daily/*.json` follow the `render_json` schema.
+
+### 10.6 Request file schema
+
+```json
+{
+  "builderid": 6,
+  "name": "WPE-Linux-64-bit-Release-Build",
+  "fetched_at": "2026-03-11T14:30:00Z",
+  "window": {
+    "start": "2026-03-10T14:30:00Z",
+    "end": "2026-03-11T14:30:00Z"
+  },
+  "requests": [
+    {"buildrequestid": 123456, "submitted_at": 1710000000,
+     "claimed_at": 1710000060, "complete_at": 1710003600,
+     "results": 0, "claimed": true}
+  ]
+}
+```
+
+### 10.7 Pipeline operations
+
+#### Fetch + aggregate cycle (every 5 min)
+
+One script invocation does both steps:
+
+1. **Fetch**: For each builder, fetch completed requests for last 24 h from
+   Buildbot API. Strip to minimal fields. Write to `requests/builder-{id}.json`.
+   At 100 req/day with 500/page limit = 1 API call per builder.
+
+2. **Aggregate**: Read the stored raw requests, filter by time window
+   (1 h / 6 h / 24 h from now), compute outcomes + timing using existing
+   `digest.py` functions, write to `current/1h.json`, `current/6h.json`,
+   `current/24h.json`.
+
+For prototype: 2 API calls every 5 min = 576/day. Acceptable.
+
+#### Daily summary (00:30 UTC)
+
+Aggregate previous day (00:00–24:00 UTC) from raw requests already on disk.
+Write to `daily/YYYY-MM-DD.json`. Single cron entry.
+
+**Daily cutoff caveat:** Accepts that a few requests submitted near midnight
+but still running at 00:30 will be missed from the daily summary.
+
+### 10.8 Script interface
+
+New script: `digest/fetch-digest-data.py`
+
+```
+fetch-digest-data.py --mode refresh|daily-summary
+                     --builder-id ID [ID ...]
+                     --data-dir PATH
+                     [--base-url URL]
+```
+
+- `--mode refresh`: fetch raw requests + produce `current/*.json`
+- `--mode daily-summary`: aggregate previous day → `daily/*.json`
+- Reuses from `digest.py`: `api_get`, `fetch_build_requests_in_window`,
+  `compute_outcomes`, `compute_timing`, `render_json`
+
+### 10.9 Space estimation
+
+#### Per raw request: ~140 bytes
+
+| Scenario | Builders | Req/day | Raw 24 h | Daily summary | Daily/year |
+|---|---|---|---|---|---|
+| **Prototype** | 2 | 100 | 28 KB | 1.8 KB | 657 KB |
+| Post-commit | 40 | 100 | 560 KB | 18 KB | 6.4 MB |
+| + EWS | 53 | mixed | 1.1 MB | 50 KB | 18 MB |
+
+#### Aggregated view files
+
+Each `current/*.json` file follows `render_json` schema: ~800 bytes/builder.
+For 2 prototype builders: ~1.8 KB per file × 3 windows = 5.4 KB total.
+
+### 10.10 Scaling considerations
+
+At full scale (53 builders), 5-min refresh = 53 API calls per cycle =
+15,264/day. If too aggressive, options:
+- Increase interval to 15 min (5,088/day)
+- Stagger builders across cycles
+- Document as future concern; prototype runs at 5 min with 2 builders
+
+### 10.11 Dashboard consumption
+
+1. **1 h / 6 h / 24 h views**: Load single file (`current/1h.json`, etc.).
+   Already aggregated — compute derived metrics only (pass_rate, trend_arrow).
+2. **5-day trend**: Load 5 most recent `daily/YYYY-MM-DD.json` files.
+
+---
+
+## 11 — Dashboard Design (Phase 3)
+
+### 11.1 Data source
 
 The dashboard reads pre-computed static JSON files produced by the data pipeline
-(Section 11), never queries Buildbot directly.
+(Section 10), never queries Buildbot directly.
 
 ```
 digest/data/
@@ -400,7 +551,7 @@ Time windows available to the dashboard:
 | Last 24 h | `current/24h.json` | Daily summary |
 | Last 5 days | 5 latest `daily/YYYY-MM-DD.json` files | Short-term trend |
 
-### 10.2 Information hierarchy — progressive disclosure
+### 11.2 Information hierarchy — progressive disclosure
 
 | Level | Time | What the user sees |
 |---|---|---|
@@ -416,7 +567,7 @@ vs dropped-mid split (only in expanded detail).
 **Highlight / promote:** failure spikes (>2x 5-day average), queue pressure
 (queue wait median >2x norm), execution regression (>1.5x norm).
 
-### 10.3 Views — first iteration
+### 11.3 Views — first iteration
 
 #### View A: Health overview (landing page)
 
@@ -450,7 +601,7 @@ rate percentage.
 - **Sort options:** by builder name, by latest-day pass rate, by trend direction.
 - **Grouping:** GTK section, then WPE section.
 
-### 10.4 Views — future iterations (reference)
+### 11.4 Views — future iterations (reference)
 
 #### View C: Timing / Performance (future)
 
@@ -485,7 +636,7 @@ Most of this information is already available from Views A + B, so this view
 is lower priority. Main added value: making skip rate and drop rate visible
 at a glance across all builders.
 
-### 10.5 Navigation and file structure
+### 11.5 Navigation and file structure
 
 - **Nav entry:** "Digest" added to the existing nav bar (`components/nav-bar.js`
   `NAV_LINKS` array).
@@ -497,7 +648,7 @@ at a glance across all builders.
 - **No auto-refresh.** Data is hourly snapshots; show "Last updated" timestamp +
   manual refresh button.
 
-### 10.6 Derived metrics (computed client-side)
+### 11.6 Derived metrics (computed client-side)
 
 All derived metrics are computable from the existing `render_json` schema fields
 (`outcomes.*`, `timing.*.median_s`, `completed`).
@@ -511,154 +662,3 @@ health_status = green if pass_rate >= 0.9, yellow if >= 0.7, red otherwise
 trend_arrow   = compare today's pass_rate vs mean(last 4 days)
 timing_ratio  = today's timing.total.median_s / mean(last 4 days' timing.total.median_s)
 ```
-
----
-
-## 11 — Data Pipeline (Phase 3)
-
-### 11.1 Overview
-
-Phase 4 (dashboard) needs pre-computed data. The data pipeline fetches build
-request data from the Buildbot API, stores it on disk, and keeps it fresh via
-periodic refresh. A Python service runs every 5 minutes, fetches raw requests,
-and produces pre-aggregated JSON files for each time window. The dashboard
-consumes these directly — no aggregation logic in JS.
-
-**Rationale for server-side aggregation:**
-- Avoids duplicating aggregation code (outcomes, timing stats) in JavaScript
-- Keeps frontend simple: just load and render
-- Reuses existing `digest.py` functions (`compute_outcomes`, `compute_timing`,
-  `summary_stats`, `render_json`)
-
-### 11.2 Two-tier storage
-
-| Tier | What | Retention | Purpose |
-|---|---|---|---|
-| Raw build requests | Individual request records, minimal fields | Rolling 24 h | Source data for server-side aggregation into 1h/6h/24h views |
-| Daily summaries | Aggregated per-builder stats (`render_json` format) | Indefinite | Fixed 24 h windows for 5-day trend |
-
-### 11.3 Minimal fields per raw request
-
-Only 6 fields retained from each build request (matches `digest.py` usage):
-
-```json
-{"buildrequestid": 123456, "submitted_at": 1710000000, "claimed_at": 1710000060,
- "complete_at": 1710003600, "results": 0, "claimed": true}
-```
-
-~140 bytes per request. Everything else from the API response is discarded.
-
-### 11.4 Prototype scope
-
-Only 2 builders for initial implementation:
-- WPE-Linux-64-bit-Release-Build (id 6)
-- WPE-Linux-64-bit-Release-Tests (id 40)
-
-### 11.5 File structure
-
-```
-digest/data/
-  requests/
-    builder-6.json         # Raw requests, last 24h
-    builder-40.json        # Raw requests, last 24h
-  current/
-    1h.json                # Aggregated: all builders, last 1 hour
-    6h.json                # Aggregated: all builders, last 6 hours
-    24h.json               # Aggregated: all builders, last 24 hours
-  daily/
-    2026-03-10.json        # Aggregated daily summary (all builders)
-    2026-03-09.json
-    ...
-```
-
-Per-builder request files because each builder is fetched independently.
-`current/*.json` and `daily/*.json` follow the `render_json` schema.
-
-### 11.6 Request file schema
-
-```json
-{
-  "builderid": 6,
-  "name": "WPE-Linux-64-bit-Release-Build",
-  "fetched_at": "2026-03-11T14:30:00Z",
-  "window": {
-    "start": "2026-03-10T14:30:00Z",
-    "end": "2026-03-11T14:30:00Z"
-  },
-  "requests": [
-    {"buildrequestid": 123456, "submitted_at": 1710000000,
-     "claimed_at": 1710000060, "complete_at": 1710003600,
-     "results": 0, "claimed": true}
-  ]
-}
-```
-
-### 11.7 Pipeline operations
-
-#### Fetch + aggregate cycle (every 5 min)
-
-One script invocation does both steps:
-
-1. **Fetch**: For each builder, fetch completed requests for last 24 h from
-   Buildbot API. Strip to minimal fields. Write to `requests/builder-{id}.json`.
-   At 100 req/day with 500/page limit = 1 API call per builder.
-
-2. **Aggregate**: Read the stored raw requests, filter by time window
-   (1 h / 6 h / 24 h from now), compute outcomes + timing using existing
-   `digest.py` functions, write to `current/1h.json`, `current/6h.json`,
-   `current/24h.json`.
-
-For prototype: 2 API calls every 5 min = 576/day. Acceptable.
-
-#### Daily summary (00:30 UTC)
-
-Aggregate previous day (00:00–24:00 UTC) from raw requests already on disk.
-Write to `daily/YYYY-MM-DD.json`. Single cron entry.
-
-**Daily cutoff caveat:** Accepts that a few requests submitted near midnight
-but still running at 00:30 will be missed from the daily summary.
-
-### 11.8 Script interface
-
-New script: `digest/fetch-digest-data.py`
-
-```
-fetch-digest-data.py --mode refresh|daily-summary
-                     --builder-id ID [ID ...]
-                     --data-dir PATH
-                     [--base-url URL]
-```
-
-- `--mode refresh`: fetch raw requests + produce `current/*.json`
-- `--mode daily-summary`: aggregate previous day → `daily/*.json`
-- Reuses from `digest.py`: `api_get`, `fetch_build_requests_in_window`,
-  `compute_outcomes`, `compute_timing`, `render_json`
-
-### 11.9 Space estimation
-
-#### Per raw request: ~140 bytes
-
-| Scenario | Builders | Req/day | Raw 24 h | Daily summary | Daily/year |
-|---|---|---|---|---|---|
-| **Prototype** | 2 | 100 | 28 KB | 1.8 KB | 657 KB |
-| Post-commit | 40 | 100 | 560 KB | 18 KB | 6.4 MB |
-| + EWS | 53 | mixed | 1.1 MB | 50 KB | 18 MB |
-
-#### Aggregated view files
-
-Each `current/*.json` file follows `render_json` schema: ~800 bytes/builder.
-For 2 prototype builders: ~1.8 KB per file × 3 windows = 5.4 KB total.
-
-### 11.10 Scaling considerations
-
-At full scale (53 builders), 5-min refresh = 53 API calls per cycle =
-15,264/day. If too aggressive, options:
-- Increase interval to 15 min (5,088/day)
-- Stagger builders across cycles
-- Document as future concern; prototype runs at 5 min with 2 builders
-
-### 11.11 Dashboard consumption
-
-1. **1 h / 6 h / 24 h views**: Load single file (`current/1h.json`, etc.).
-   Already aggregated — compute derived metrics only (pass_rate, trend_arrow).
-2. **5-day trend**: Load 5 most recent `daily/YYYY-MM-DD.json` files.
