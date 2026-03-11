@@ -118,18 +118,86 @@ P90 is omitted when fewer than 10 timing samples are available.
 For tester queues (e.g. `WPE-Linux-64-bit-Release-Tests`), a per-step breakdown is
 available via `step-analysis.py`.
 
-Target step names (validate against live API — names may drift over time):
-- `layout-tests` / `run-webkit-tests`
-- `run-api-tests`
-- `webkitpy-test`
-- `webkitperl-test`
-- `webdriver-tests`
-
 Stats per step: success rate (results 0 or 1), avg / median / P90 / max duration.
 
 API pattern: `builds/{buildid}/steps` — one call per build. For a 24 h window with 20–50
 builds this means 20–50 extra HTTP requests. Acceptable for manual use; not suitable for
 high-frequency automation.
+
+#### Step relevance heuristic
+
+Not every step in a build is interesting for QA triage. Infrastructure steps like
+`clean-test-results`, `download-test-results`, or `set-build-summary` are noise. A
+blanket "name contains `test`" heuristic would match these, so the script uses a
+two-tier approach:
+
+1. **`KNOWN_TEST_STEPS` hardcoded list** — exact-match names for the steps that
+   carry meaningful test outcomes:
+   - `layout-tests` / `run-webkit-tests`
+   - `run-api-tests`
+   - `webkitpy-test`
+   - `webkitperl-test`
+   - `webdriver-tests`
+
+   This list is the default filter when `--steps` is not provided. It should be
+   validated against live API output periodically — names may drift over time.
+   The script emits a "steps seen" summary to aid detection of new or renamed steps.
+
+2. **`--steps` flag** — accepts one or more step name fragments, matched
+   case-insensitively as substrings. This allows ad-hoc analysis of steps not in
+   the hardcoded list (e.g. `--steps perf` to catch performance-related steps)
+   without modifying the script.
+
+#### What `results` gives vs what it doesn't
+
+The Buildbot step `results` field is a coarse integer code (0=success, 1=warnings,
+2=failure, 3=skipped, 4=exception, 5=retry, 6=cancelled). This tells us pass/fail
+at the **step level**, which is already captured and aggregated.
+
+However, for test runner steps (`layout-tests`, `run-api-tests`, etc.), the
+interesting signal is often *how many individual tests* failed or flaked within that
+step. That granularity is **not** available in `results` — it lives in
+`state_string`.
+
+#### `state_string` parsing (future enhancement)
+
+The step `state_string` field contains human-readable summaries set by the step
+class in the Buildbot configuration, e.g.:
+- `"2 failures 1 flaky"`
+- `"Passed"`
+- `"50 pdf failures 1 flaky"`
+
+This is the only source of per-step test failure counts without querying a separate
+test results backend. Parsing it would enable metrics like "average number of test
+failures per run" or "which steps produce the most flaky results".
+
+**Why we're deferring this:** `state_string` values are set by step implementation
+classes in the Buildbot master config. They can change format without notice (e.g.
+a step class update might change `"2 failures"` to `"2 test failures"`). Any parser
+would be fragile and tightly coupled to the current Buildbot configuration. The
+risk/reward ratio doesn't justify it for Phase 2.
+
+**Flagged as a future opportunity:** If failure count trends become a priority,
+`state_string` parsing is the path — but it should be paired with a validation
+step that alerts when the format diverges from expectations.
+
+#### Request volume safeguards
+
+The N+1 API pattern (one request per build for step data) means request volume
+scales linearly with the number of builds in the window. For a busy tester queue
+over 24 h, this can reach 50–100+ API calls.
+
+Safeguards:
+- **Build count printed up front:** Before fetching steps, the script prints the
+  number of builds that will be queried, so the user knows the cost.
+- **Interactive confirmation at threshold:** When the build count exceeds a
+  configurable threshold (default 50), the script pauses with
+  `Continue with N builds? [y/N]` on stderr. This prevents accidental large
+  fetches (e.g. `--hours 168` on a busy queue).
+- **`--yes` flag:** Bypasses the confirmation prompt. Intended for scripted or
+  cron usage where no human is present to respond.
+- **Non-TTY detection:** If stdin is not a TTY (e.g. piped input, cron job),
+  the script behaves as if `--yes` was passed, so piped usage doesn't hang.
 
 ---
 
@@ -161,9 +229,14 @@ GET builds/{buildid}/steps
     ?field=stepid
     &field=name
     &field=results
+    &field=state_string
     &field=started_at
     &field=complete_at
 ```
+
+Note: `state_string` is included for future use (see §3.4 — `state_string` parsing).
+Currently not consumed by `step-analysis.py` but fetched so the data is available
+for inspection and future enhancement without changing the query.
 
 ---
 
@@ -254,12 +327,20 @@ GTK-Linux-64-bit-Release-Tests  (id=42)
 step-analysis.py <builder-id-or-name>
                  [--hours 24] [--start "2024-01-15 00:00 UTC"]
                  [--steps STEP [STEP ...]]
+                 [--yes]
                  [--format table|json] [--base-url URL]
 ```
 
 Fetches all builds for the builder that completed within the window, then fetches steps
 for each build (N+1 pattern — count is printed up front). Filters to the given step names
-(or all steps if `--steps` is omitted). Outputs per-step aggregated stats.
+(or `KNOWN_TEST_STEPS` if `--steps` is omitted). Outputs per-step aggregated stats.
+
+**Confirmation behavior:** When the number of builds exceeds 50, the script prints
+`Continue with N builds? [y/N]` on stderr and waits for input. This prevents
+accidentally hammering the API with a wide time window on a busy queue.
+- `--yes`: Skip the confirmation prompt (for scripted / cron use).
+- If stdin is not a TTY (piped input, cron), confirmation is automatically skipped
+  to avoid hanging.
 
 ---
 
