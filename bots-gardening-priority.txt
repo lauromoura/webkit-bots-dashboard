@@ -1,0 +1,21 @@
+The task of the gardener is to **ensure that the following tasks are handled on their gardening day** (by priority):
+
+* [ ] The build is not broken on
+  * [ ] [WPE Release Build](https://build.webkit.org/#/builders/6)
+  * [ ] [WPE Debug Build](https://build.webkit.org/#/builders/66)
+  * [ ] [GTK Release Build](https://build.webkit.org/#/builders/41)
+  * [ ] [GTK Debug Build](https://build.webkit.org/#/builders/43)
+  * [ ] [EWS WPE Release Build](https://ews-build.webkit.org/#/builders/5)
+  * [ ] [EWS GTK Release Build](https://ews-build.webkit.org/#/builders/2)
+* [ ] No crashes/timeouts/failures for **WPE bots**:
+  * [ ] No unexpected layout test crashes or timeouts on [WPE Release Tests](https://build.webkit.org/#/builders/40)
+  * [ ] No unexpected API test failures on [WPE Release Tests](https://build.webkit.org/#/builders/40)
+  * [ ] No unexpected layout test failure on [WPE Release Tests](https://build.webkit.org/#/builders/40)
+  * [ ] No unexpected JSC test failures on [WPE Release JS Tests](https://build.webkit.org/#/builders/44)
+* [ ] No crashes/timeouts/failures for **WebKitGTK bots**:
+  * [ ] No unexpected layout test crashes or timeouts on [GTK Release Tests](https://build.webkit.org/#/builders/57)
+  * [ ] No unexpected API test failures on [GTK Release Tests](https://build.webkit.org/#/builders/57)
+  * [ ] No unexpected layout test failure on [GTK Release Tests](https://build.webkit.org/#/builders/57)
+  * [ ] No unexpected JSC test failures on [GTK Release JS Tests](https://build.webkit.org/#/builders/58)
+
+
