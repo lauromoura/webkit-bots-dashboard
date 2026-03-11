@@ -189,7 +189,9 @@ GET builds/{buildid}/steps
 | **1 (MVP)** | `digest.py` — build-request-level stats, table + JSON output |
 | **2** | `step-analysis.py` — per-step breakdown for tester queues |
 | **3** | JSON output + daily cron run → store to file/DB for multi-day trending |
-| **4** | HTML page in the bots dashboard for interactive digest view |
+| **4a** | `digest.html` — Health overview + 5-day trend (HTML/CSS, no Chart.js) |
+| **4b** | Timing view (CSS bars with regression detection) |
+| **4c** | Outcome breakdown view (stacked CSS bars) |
 | **5** | EWS support (`--base-url` flag + EWS builder list) |
 | **6** | True execution time via `builds.started_at` cross-reference |
 
@@ -268,3 +270,140 @@ for each build (N+1 pattern — count is printed up front). Filters to the given
    count matches `meta.total` from the first API page.
 5. Run with `--format json` and pipe to `jq` to confirm the JSON structure is valid and
    all fields are present.
+
+---
+
+## 10 — Dashboard Design (Phase 4)
+
+### 10.1 Data source
+
+The dashboard reads pre-computed static JSON files, never queries Buildbot directly.
+
+```
+digest/data/hourly/YYYY-MM-DDTHH.json    # 1-hour window snapshots
+digest/data/daily/YYYY-MM-DD.json        # 24-hour window (midnight-aligned)
+```
+
+Each file follows the existing `render_json` schema. The dashboard fetches the
+relevant files and computes derived metrics client-side (pass rate, trend arrows).
+
+Time windows available to the dashboard:
+
+| Window | Source | Purpose |
+|---|---|---|
+| Last 1 h | latest hourly JSON | Live-ish pulse check |
+| Last 6 h | 6 latest hourly JSONs (aggregated client-side) | "Current shift" view |
+| Last 24 h | latest daily JSON | Daily summary |
+| Last 5 days | 5 latest daily JSONs | Short-term trend |
+
+### 10.2 Information hierarchy — progressive disclosure
+
+| Level | Time | What the user sees |
+|---|---|---|
+| Glance (L0) | 2 s | Color-coded status per builder — spot trouble instantly |
+| Scan (L1) | 10 s | Volume + pass rate + median timing in one line per builder |
+| Investigate (L2) | 30 s | Full outcome counts, timing breakdown (queue/exec/total/skip wait), P90, max |
+| Deep dive (L3) | — | Link to existing `builder.html` for live build-by-build inspection |
+
+**Suppress by default:** idle builders (show count as footnote), P90/max stats
+(only on expand), skip wait (only when skips exist, only in detail), dropped-pre
+vs dropped-mid split (only in expanded detail).
+
+**Highlight / promote:** failure spikes (>2x 5-day average), queue pressure
+(queue wait median >2x norm), execution regression (>1.5x norm).
+
+### 10.3 Views — first iteration
+
+#### View A: Health overview (landing page)
+
+**Question answered:** "Which builders need attention?"
+
+Hybrid layout:
+- **Top section — "Needs attention"**: Cards for builders with pass rate < 90%
+  (yellow) or < 70% (red). Each card shows: builder name, pass rate, request
+  count, median total time, primary failure type, trend arrow vs 5-day average.
+- **Bottom section — "Healthy"**: Compact table rows for pass rate >= 90%.
+  One line per builder: name, pass rate, request count, median time.
+- **Footer — "Idle"**: Collapsed list of builders with 0 requests in window.
+
+Time window selector at top: 1h / 6h / 24h toggle. Switching reloads from the
+corresponding JSON file(s).
+
+Card click → expand inline with full outcome breakdown and timing stats (L2).
+Builder name link → existing `builder.html?builder=ID` (L3).
+
+#### View B: 5-day trend
+
+**Question answered:** "Is this a one-off or a pattern?"
+
+Heat map table. Builders as rows, last 5 days as columns. Cell color = pass rate
+(green >= 90%, yellow 70–89%, red < 70%, gray = idle/no data). Cell text = pass
+rate percentage.
+
+- **Trend arrow per row:** ↑↓→ comparing latest day vs 4-day average.
+- **Click cell:** Tooltip with that day's full stats (outcomes, timing, volume).
+- **Click row:** Expand to show timing and outcome detail across all 5 days.
+- **Sort options:** by builder name, by latest-day pass rate, by trend direction.
+- **Grouping:** GTK section, then WPE section.
+
+### 10.4 Views — future iterations (reference)
+
+#### View C: Timing / Performance (future)
+
+**Question answered:** "Are builds taking longer than usual?"
+
+Horizontal CSS bars, one per builder, showing median total time for selected
+window. Sorted longest-first.
+
+Bar color by comparison to 5-day median:
+- Normal (within 1.2x): neutral/green
+- Elevated (1.2x–1.5x): yellow
+- Degraded (>1.5x): red
+
+Hover/click: full stat breakdown (avg, median, P90, max) + queue wait vs
+execution split. Skip wait annotation when applicable.
+
+Queue wait callout: banner when any builder's queue wait median > 10 min
+(indicates worker shortage).
+
+#### View D: Outcome breakdown (future)
+
+**Question answered:** "What's the failure/skip/drop distribution?"
+
+Stacked horizontal CSS bars per builder, each bar = 100% of completed requests.
+Segments colored by outcome (success=green, failure=red, skipped=gray,
+exception=orange, dropped=striped).
+
+Sort by: total volume, failure rate, skip rate.
+Optional 5-day average overlay line for comparison.
+
+Most of this information is already available from Views A + B, so this view
+is lower priority. Main added value: making skip rate and drop rate visible
+at a glance across all builders.
+
+### 10.5 Navigation and file structure
+
+- **Nav entry:** "Digest" added to the existing nav bar (`components/nav-bar.js`
+  `NAV_LINKS` array).
+- **URL:** `digest.html` in the project root.
+- **Page module:** `pages/digest.js`
+- **Components:** `components/digest-card.js`, `components/digest-heatmap.js`, etc.
+- **No Chart.js dependency.** Pure HTML/CSS: colored cells, CSS-width bars,
+  background-color thresholds.
+- **No auto-refresh.** Data is hourly snapshots; show "Last updated" timestamp +
+  manual refresh button.
+
+### 10.6 Derived metrics (computed client-side)
+
+All derived metrics are computable from the existing `render_json` schema fields
+(`outcomes.*`, `timing.*.median_s`, `completed`).
+
+```
+pass_rate     = (outcomes.Success + outcomes.Warnings) / completed
+failure_rate  = outcomes.Failure / completed
+skip_rate     = outcomes.Skipped / completed
+drop_rate     = (outcomes["Dropped-pre"] + outcomes["Dropped-mid"]) / completed
+health_status = green if pass_rate >= 0.9, yellow if >= 0.7, red otherwise
+trend_arrow   = compare today's pass_rate vs mean(last 4 days)
+timing_ratio  = today's timing.total.median_s / mean(last 4 days' timing.total.median_s)
+```
