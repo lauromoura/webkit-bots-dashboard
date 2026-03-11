@@ -1,5 +1,5 @@
 import { el } from "./_dom.js";
-import { buildbotBuildURL } from "../lib/urls.js";
+import { buildbotBuildURL, workerPageURL } from "../lib/urls.js";
 import { RESULT_CODES } from "../lib/api.js";
 import { formatRelativeDate, formatRelativeDateFromNow } from "../lib/format.js";
 
@@ -13,7 +13,7 @@ import { formatRelativeDate, formatRelativeDateFromNow } from "../lib/format.js"
  * @returns {HTMLTableRowElement}
  */
 export function renderBuildHistoryRow(builderId, build, options = {}) {
-    const { buildbotBase, workerNames } = options;
+    const { buildbotBase, workerNames, hideWorkerColumn } = options;
     // Job number cell (colored by status)
     const buildURL = buildbotBase
         ? `${buildbotBase}#/builders/${builderId}/builds/${build.number}`
@@ -56,14 +56,28 @@ export function renderBuildHistoryRow(builderId, build, options = {}) {
         durationCell.textContent = `${formatRelativeDateFromNow(build.started_at)} and counting`;
     }
 
-    // Worker cell
-    const workerName = workerNames?.get(build.workerid) || (build.workerid != null ? `worker-${build.workerid}` : "unknown");
-    const workerCell = el("td", { className: "jobWorker" });
-    workerCell.textContent = workerName;
+    // Worker cell (omitted when hideWorkerColumn is set)
+    let workerCell;
+    if (!hideWorkerColumn) {
+        const workerName = workerNames?.get(build.workerid) || (build.workerid != null ? `worker-${build.workerid}` : "unknown");
+        workerCell = el("td", { className: "jobWorker" });
+        if (build.workerid != null) {
+            const workerHref = buildbotBase
+                ? `./worker.html?ews-worker=${build.workerid}`
+                : workerPageURL(build.workerid);
+            workerCell.appendChild(el("a", { href: workerHref }, [workerName]));
+        } else {
+            workerCell.textContent = workerName;
+        }
+    }
 
     // Status cell
     const statusCell = el("td", { className: "jobStatus" });
     statusCell.textContent = build.state_string;
 
-    return el("tr", null, [numberCell, identifierCell, startedCell, durationCell, workerCell, statusCell]);
+    const cells = [numberCell, identifierCell, startedCell, durationCell];
+    if (workerCell)
+        cells.push(workerCell);
+    cells.push(statusCell);
+    return el("tr", null, cells);
 }

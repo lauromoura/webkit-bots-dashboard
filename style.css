@@ -190,6 +190,70 @@ nav {
     padding-left: 20px;
 }
 
+/* Queue row expandable worker detail */
+
+.queue-row-clickable {
+    cursor: pointer;
+}
+
+.worker-toggle-indicator {
+    font-size: 9px;
+    vertical-align: middle;
+}
+
+.worker-detail-row td {
+    background-color: #f7f7f7;
+    border-top: none;
+    padding: 6px 12px;
+}
+
+.worker-detail-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.worker-entry {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.worker-connected {
+    background-color: #c8e6c9;
+    color: #2e7d32;
+}
+
+.worker-disconnected {
+    background-color: #ffcdd2;
+    color: #c62828;
+}
+
+.worker-paused {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.worker-graceful {
+    background-color: #d6e4f0;
+    color: #37474f;
+}
+
+a.worker-entry {
+    text-decoration: none;
+    color: inherit;
+}
+
+a.worker-entry:hover {
+    filter: brightness(0.9);
+}
+
+.worker-detail-row:hover td {
+    background-color: #f0f0f0;
+}
+
 .queue-legend {
     font-size: 13px;
     line-height: 2;
@@ -245,5 +309,7 @@ nav {
     .build-history--ews td:nth-of-type(2):before { content: "Base Identifier"; }
     .build-history td:nth-of-type(3):before { content: "Started"; }
     .build-history td:nth-of-type(4):before { content: "Duration"; }
-    .build-history td:nth-of-type(5):before { content: "Status"; }
+    .build-history td:nth-of-type(5):before { content: "Worker"; }
+    .build-history td:nth-of-type(6):before { content: "Status"; }
+    .build-history--no-worker td:nth-of-type(5):before { content: "Status"; }
 }

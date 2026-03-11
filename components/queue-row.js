@@ -1,5 +1,5 @@
 import { el } from "./_dom.js";
-import { buildbotBuilderURL, builderPageURL } from "../lib/urls.js";
+import { buildbotBuilderURL, builderPageURL, workerPageURL } from "../lib/urls.js";
 
 // Default severity thresholds (post-commit)
 const SPINUP_THRESHOLD_SEC = 600;        // 10 minutes — normal worker spin-up time
@@ -54,8 +54,20 @@ function formatDuration(seconds) {
     return `${m}m ${s}s`;
 }
 
+export function classifyWorker(worker) {
+    if (worker.connected_to.length === 0)
+        return "disconnected";
+    if (worker.graceful)
+        return "graceful";
+    if (worker.paused)
+        return "paused";
+    return "connected";
+}
+
+const WORKER_SORT_ORDER = { disconnected: 0, paused: 1, graceful: 2, connected: 3 };
+
 /**
- * Render a single queue status row.
+ * Render a single queue status row with an expandable worker detail row.
  *
  * @param {Object} builder - { builderid, name, tags }
  * @param {Array} requests - build requests for this builder (incomplete only)
@@ -64,10 +76,11 @@ function formatDuration(seconds) {
  * @param {boolean} [options.showIdleWorkers] - show Idle Workers column
  * @param {Object} [options.thresholds] - severity threshold overrides
  * @param {string} [options.buildbotBase] - base URL for buildbot links (e.g. "https://ews-build.webkit.org/")
- * @returns {{ row: HTMLTableRowElement, severity: number }}
+ * @param {number} [options.columnCount] - total number of columns for detail row colspan
+ * @returns {{ rows: HTMLTableRowElement[], severity: number }}
  */
 export function renderQueueRow(builder, requests, workers, options = {}) {
-    const { showIdleWorkers = false, thresholds = {}, buildbotBase } = options;
+    const { showIdleWorkers = false, thresholds = {}, buildbotBase, columnCount } = options;
     const now = Math.floor(Date.now() / 1000);
 
     // Split requests into pending (unclaimed) and running (claimed but not complete)
@@ -129,11 +142,12 @@ export function renderQueueRow(builder, requests, workers, options = {}) {
         stuckJobs ? `${runningText} ⚠` : runningText,
     ]);
 
-    // Workers cell
+    // Workers cell (with toggle indicator)
     let workersText = `${connectedWorkers}/${totalWorkers} connected`;
     if (pausedWorkers > 0)
         workersText += ` (${pausedWorkers} paused)`;
-    const workersCell = el("td", { className: "queue-status", "data-sort": `${connectedWorkers}` }, [workersText]);
+    const toggleIndicator = el("span", { className: "worker-toggle-indicator" }, ["\u25B6 "]);
+    const workersCell = el("td", { className: "queue-status", "data-sort": `${connectedWorkers}` }, [toggleIndicator, workersText]);
 
     // Idle Workers cell (optional)
     let idleWorkersCell;
@@ -154,7 +168,46 @@ export function renderQueueRow(builder, requests, workers, options = {}) {
         cells.push(idleWorkersCell);
     cells.push(statusCell);
 
-    const row = el("tr", null, cells);
+    const mainRow = el("tr", { className: "queue-row-clickable" }, cells);
 
-    return { row, severity };
+    // Detail row with per-worker breakdown
+    const colSpan = columnCount || cells.length;
+    const sortedWorkers = [...workers].sort((a, b) => {
+        return WORKER_SORT_ORDER[classifyWorker(a)] - WORKER_SORT_ORDER[classifyWorker(b)];
+    });
+    const workerEntries = sortedWorkers.map(w => {
+        const status = classifyWorker(w);
+        const workerHref = buildbotBase
+            ? `./worker.html?ews-worker=${w.workerid}`
+            : workerPageURL(w.workerid);
+        const attrs = { className: `worker-entry worker-${status}`, href: workerHref };
+        let label = w.name;
+        if (status === "paused") {
+            label += " (paused)";
+            const reason = w.pause_reason;
+            if (reason)
+                attrs.title = reason;
+        } else if (status === "graceful") {
+            label += " (graceful)";
+        } else if (status === "disconnected") {
+            label += " (offline)";
+        }
+        return el("a", attrs, [label]);
+    });
+    const grid = el("div", { className: "worker-detail-grid" }, workerEntries);
+    const detailTd = el("td", { colSpan: `${colSpan}` }, [grid]);
+    const detailRow = el("tr", { className: "worker-detail-row", style: "display:none" }, [detailTd]);
+    detailRow._mainRow = mainRow;
+
+    // Click handler to toggle detail row
+    mainRow.addEventListener("click", (e) => {
+        // Don't toggle when clicking links
+        if (e.target.closest("a"))
+            return;
+        const visible = detailRow.style.display !== "none";
+        detailRow.style.display = visible ? "none" : "table-row";
+        toggleIndicator.textContent = visible ? "\u25B6 " : "\u25BC ";
+    });
+
+    return { rows: [mainRow, detailRow], severity };
 }

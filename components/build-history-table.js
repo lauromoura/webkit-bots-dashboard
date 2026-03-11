@@ -20,7 +20,10 @@ const HEADER_LABELS = [
  * @returns {HTMLTableElement}
  */
 export function renderBuildHistoryTable(builderId, builds, options = {}) {
-    const headerCells = HEADER_LABELS.map(label => el("th", null, [label]));
+    const labels = options.hideWorkerColumn
+        ? HEADER_LABELS.filter(l => l !== "Worker")
+        : HEADER_LABELS;
+    const headerCells = labels.map(label => el("th", null, [label]));
     // Force numeric sorting on columns with data-sort numeric values
     headerCells[0].setAttribute("data-sort-method", "number"); // Job number
     headerCells[2].setAttribute("data-sort-method", "number"); // Started
@@ -38,6 +41,8 @@ export function renderBuildHistoryTable(builderId, builds, options = {}) {
     const table = el("table", { id: "jobsList", className: "build-history" }, [thead, tbody]);
     if (options.buildbotBase)
         table.classList.add("build-history--ews");
+    if (options.hideWorkerColumn)
+        table.classList.add("build-history--no-worker");
 
     new Tablesort(table);
 
