@@ -188,7 +188,10 @@ GET builds/{buildid}/steps
 |---|---|
 | **1 (MVP)** | `digest.py` — build-request-level stats, table + JSON output |
 | **2** | `step-analysis.py` — per-step breakdown for tester queues |
-| **3** | JSON output + daily cron run → store to file/DB for multi-day trending |
+| **3a** | Data pipeline design — two-tier storage, fetch + aggregate cycle, file layout (Section 11) |
+| **3b** | `fetch-digest-data.py --mode refresh` — fetch raw requests + produce `current/*.json` |
+| **3c** | `fetch-digest-data.py --mode daily-summary` — aggregate previous day → `daily/*.json` |
+| **3d** | Cron setup — 5-min refresh cycle + 00:30 UTC daily summary |
 | **4a** | `digest.html` — Health overview + 5-day trend (HTML/CSS, no Chart.js) |
 | **4b** | Timing view (CSS bars with regression detection) |
 | **4c** | Outcome breakdown view (stacked CSS bars) |
@@ -277,24 +280,30 @@ for each build (N+1 pattern — count is printed up front). Filters to the given
 
 ### 10.1 Data source
 
-The dashboard reads pre-computed static JSON files, never queries Buildbot directly.
+The dashboard reads pre-computed static JSON files produced by the data pipeline
+(Section 11), never queries Buildbot directly.
 
 ```
-digest/data/hourly/YYYY-MM-DDTHH.json    # 1-hour window snapshots
-digest/data/daily/YYYY-MM-DD.json        # 24-hour window (midnight-aligned)
+digest/data/
+  requests/builder-{id}.json    # Raw requests, last 24h (pipeline internal)
+  current/1h.json               # Aggregated: all builders, last 1 hour
+  current/6h.json               # Aggregated: all builders, last 6 hours
+  current/24h.json              # Aggregated: all builders, last 24 hours
+  daily/YYYY-MM-DD.json         # Aggregated daily summary (all builders)
 ```
 
-Each file follows the existing `render_json` schema. The dashboard fetches the
-relevant files and computes derived metrics client-side (pass rate, trend arrows).
+Each `current/*.json` and `daily/*.json` file follows the existing `render_json`
+schema. The dashboard fetches the relevant files and computes derived metrics
+client-side (pass rate, trend arrows).
 
 Time windows available to the dashboard:
 
 | Window | Source | Purpose |
 |---|---|---|
-| Last 1 h | latest hourly JSON | Live-ish pulse check |
-| Last 6 h | 6 latest hourly JSONs (aggregated client-side) | "Current shift" view |
-| Last 24 h | latest daily JSON | Daily summary |
-| Last 5 days | 5 latest daily JSONs | Short-term trend |
+| Last 1 h | `current/1h.json` | Live-ish pulse check |
+| Last 6 h | `current/6h.json` | "Current shift" view |
+| Last 24 h | `current/24h.json` | Daily summary |
+| Last 5 days | 5 latest `daily/YYYY-MM-DD.json` files | Short-term trend |
 
 ### 10.2 Information hierarchy — progressive disclosure
 
@@ -407,3 +416,154 @@ health_status = green if pass_rate >= 0.9, yellow if >= 0.7, red otherwise
 trend_arrow   = compare today's pass_rate vs mean(last 4 days)
 timing_ratio  = today's timing.total.median_s / mean(last 4 days' timing.total.median_s)
 ```
+
+---
+
+## 11 — Data Pipeline (Phase 3)
+
+### 11.1 Overview
+
+Phase 4 (dashboard) needs pre-computed data. The data pipeline fetches build
+request data from the Buildbot API, stores it on disk, and keeps it fresh via
+periodic refresh. A Python service runs every 5 minutes, fetches raw requests,
+and produces pre-aggregated JSON files for each time window. The dashboard
+consumes these directly — no aggregation logic in JS.
+
+**Rationale for server-side aggregation:**
+- Avoids duplicating aggregation code (outcomes, timing stats) in JavaScript
+- Keeps frontend simple: just load and render
+- Reuses existing `digest.py` functions (`compute_outcomes`, `compute_timing`,
+  `summary_stats`, `render_json`)
+
+### 11.2 Two-tier storage
+
+| Tier | What | Retention | Purpose |
+|---|---|---|---|
+| Raw build requests | Individual request records, minimal fields | Rolling 24 h | Source data for server-side aggregation into 1h/6h/24h views |
+| Daily summaries | Aggregated per-builder stats (`render_json` format) | Indefinite | Fixed 24 h windows for 5-day trend |
+
+### 11.3 Minimal fields per raw request
+
+Only 6 fields retained from each build request (matches `digest.py` usage):
+
+```json
+{"buildrequestid": 123456, "submitted_at": 1710000000, "claimed_at": 1710000060,
+ "complete_at": 1710003600, "results": 0, "claimed": true}
+```
+
+~140 bytes per request. Everything else from the API response is discarded.
+
+### 11.4 Prototype scope
+
+Only 2 builders for initial implementation:
+- WPE-Linux-64-bit-Release-Build (id 6)
+- WPE-Linux-64-bit-Release-Tests (id 40)
+
+### 11.5 File structure
+
+```
+digest/data/
+  requests/
+    builder-6.json         # Raw requests, last 24h
+    builder-40.json        # Raw requests, last 24h
+  current/
+    1h.json                # Aggregated: all builders, last 1 hour
+    6h.json                # Aggregated: all builders, last 6 hours
+    24h.json               # Aggregated: all builders, last 24 hours
+  daily/
+    2026-03-10.json        # Aggregated daily summary (all builders)
+    2026-03-09.json
+    ...
+```
+
+Per-builder request files because each builder is fetched independently.
+`current/*.json` and `daily/*.json` follow the `render_json` schema.
+
+### 11.6 Request file schema
+
+```json
+{
+  "builderid": 6,
+  "name": "WPE-Linux-64-bit-Release-Build",
+  "fetched_at": "2026-03-11T14:30:00Z",
+  "window": {
+    "start": "2026-03-10T14:30:00Z",
+    "end": "2026-03-11T14:30:00Z"
+  },
+  "requests": [
+    {"buildrequestid": 123456, "submitted_at": 1710000000,
+     "claimed_at": 1710000060, "complete_at": 1710003600,
+     "results": 0, "claimed": true}
+  ]
+}
+```
+
+### 11.7 Pipeline operations
+
+#### Fetch + aggregate cycle (every 5 min)
+
+One script invocation does both steps:
+
+1. **Fetch**: For each builder, fetch completed requests for last 24 h from
+   Buildbot API. Strip to minimal fields. Write to `requests/builder-{id}.json`.
+   At 100 req/day with 500/page limit = 1 API call per builder.
+
+2. **Aggregate**: Read the stored raw requests, filter by time window
+   (1 h / 6 h / 24 h from now), compute outcomes + timing using existing
+   `digest.py` functions, write to `current/1h.json`, `current/6h.json`,
+   `current/24h.json`.
+
+For prototype: 2 API calls every 5 min = 576/day. Acceptable.
+
+#### Daily summary (00:30 UTC)
+
+Aggregate previous day (00:00–24:00 UTC) from raw requests already on disk.
+Write to `daily/YYYY-MM-DD.json`. Single cron entry.
+
+**Daily cutoff caveat:** Accepts that a few requests submitted near midnight
+but still running at 00:30 will be missed from the daily summary.
+
+### 11.8 Script interface
+
+New script: `digest/fetch-digest-data.py`
+
+```
+fetch-digest-data.py --mode refresh|daily-summary
+                     --builder-id ID [ID ...]
+                     --data-dir PATH
+                     [--base-url URL]
+```
+
+- `--mode refresh`: fetch raw requests + produce `current/*.json`
+- `--mode daily-summary`: aggregate previous day → `daily/*.json`
+- Reuses from `digest.py`: `api_get`, `fetch_build_requests_in_window`,
+  `compute_outcomes`, `compute_timing`, `render_json`
+
+### 11.9 Space estimation
+
+#### Per raw request: ~140 bytes
+
+| Scenario | Builders | Req/day | Raw 24 h | Daily summary | Daily/year |
+|---|---|---|---|---|---|
+| **Prototype** | 2 | 100 | 28 KB | 1.8 KB | 657 KB |
+| Post-commit | 40 | 100 | 560 KB | 18 KB | 6.4 MB |
+| + EWS | 53 | mixed | 1.1 MB | 50 KB | 18 MB |
+
+#### Aggregated view files
+
+Each `current/*.json` file follows `render_json` schema: ~800 bytes/builder.
+For 2 prototype builders: ~1.8 KB per file × 3 windows = 5.4 KB total.
+
+### 11.10 Scaling considerations
+
+At full scale (53 builders), 5-min refresh = 53 API calls per cycle =
+15,264/day. If too aggressive, options:
+- Increase interval to 15 min (5,088/day)
+- Stagger builders across cycles
+- Document as future concern; prototype runs at 5 min with 2 builders
+
+### 11.11 Dashboard consumption
+
+1. **1 h / 6 h / 24 h views**: Load single file (`current/1h.json`, etc.).
+   Already aggregated — compute derived metrics only (pass_rate, trend_arrow).
+2. **5-day trend**: Load 5 most recent `daily/YYYY-MM-DD.json` files.
