@@ -1,5 +1,19 @@
 # QA Daily Digest — Design & Brainstorm
 
+## Contents
+
+1. [Purpose & Audience](#1--purpose--audience)
+2. [Queue Scope](#2--queue-scope-gtk--wpe-focus)
+3. [Metric Definitions](#3--metric-definitions)
+4. [API Mapping](#4--api-mapping)
+5. [Limitations & Open Questions](#5--limitations--open-questions)
+6. [Roadmap](#6--roadmap)
+7. [Script Interfaces](#7--script-interfaces)
+8. [Critical Files](#8--critical-files)
+9. [Verification Checklist](#9--verification-checklist)
+10. [Dashboard Design (Phase 4)](#10--dashboard-design-phase-4)
+11. [Data Pipeline (Phase 3)](#11--data-pipeline-phase-3)
+
 ## 1 — Purpose & Audience
 
 The WebKit bots dashboard shows current status and short-term build history, but provides
