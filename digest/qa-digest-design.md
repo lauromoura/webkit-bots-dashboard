@@ -267,6 +267,31 @@ for inspection and future enhancement without changing the query.
    result=3 as post-commit skips (superseded commit). EWS queues may have higher skip
    rates due to frequent force-pushes, making the separation especially important.
 
+   **Builder ID collision risk:** Builder IDs are assigned independently per Buildbot
+   server — both `build.webkit.org` and `ews-build.webkit.org` can have a builder
+   with `id=6`. The file layout (`requests/builder-{id}.json`) and merge logic
+   (keyed on `builderid`) would silently clobber data if both servers shared the
+   same `--data-dir`.
+
+   **Resolution: separate `--data-dir` per server.** No schema or code changes
+   needed — `--base-url` + `--data-dir` already parameterise the pipeline fully.
+   EWS gets its own data tree, its own cron entries, and its own dashboard section.
+   Example cron setup:
+
+   ```
+   # Post-commit (build.webkit.org)
+   fetch-digest-data.py --mode refresh --builder-id 6 40 --data-dir digest/data
+
+   # EWS (ews-build.webkit.org)
+   fetch-digest-data.py --mode refresh --builder-id 1 2 3 \
+       --base-url https://ews-build.webkit.org/api/v2/ \
+       --data-dir digest/data-ews
+   ```
+
+   The dashboard loads from both trees and labels them separately (post-commit
+   vs EWS sections). Each request file also records `base_url` as provenance
+   (see §10.6).
+
 ---
 
 ## 6 — Roadmap
@@ -432,12 +457,22 @@ digest/data/
 Per-builder request files because each builder is fetched independently.
 `current/*.json` and `daily/*.json` follow the `render_json` schema.
 
+EWS uses a separate `--data-dir` to avoid builder ID collisions:
+
+```
+digest/data-ews/
+  requests/builder-{id}.json
+  current/1h.json  ...
+  daily/YYYY-MM-DD.json  ...
+```
+
 ### 10.6 Request file schema
 
 ```json
 {
   "builder_id": 6,
   "builder_name": "WPE-Linux-64-bit-Release-Build",
+  "base_url": "https://build.webkit.org/api/v2/",
   "fetched_at": "2026-03-11T14:30:00Z",
   "window": {
     "start_ts": 1741614600.0,
@@ -536,6 +571,11 @@ At full scale (53 builders), 5-min refresh = 53 API calls per cycle =
 - Increase interval to 15 min (5,088/day)
 - Stagger builders across cycles
 - Document as future concern; prototype runs at 5 min with 2 builders
+
+EWS runs as a separate pipeline instance with its own `--data-dir` and cron
+entries, so its API call budget is independent (hits `ews-build.webkit.org`,
+not `build.webkit.org`). Combined load is additive but targets different
+servers.
 
 ### 10.11 Dashboard consumption
 

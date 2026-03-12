@@ -188,6 +188,7 @@ def fetch_and_store(base_url, builder_id, builder_name, data_dir, now):
     wrapper = {
         "builder_id": builder_id,
         "builder_name": builder_name,
+        "base_url": base_url,
         "fetched_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "window": {
             "start_ts": start_ts,
