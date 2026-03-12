@@ -275,8 +275,8 @@ for inspection and future enhancement without changing the query.
 |---|---|
 | **1 (MVP)** | `digest.py` — build-request-level stats, table + JSON output |
 | **2a** | Data pipeline design — two-tier storage, fetch + aggregate cycle, file layout (Section 10) |
-| **2b** | `fetch-digest-data.py --mode refresh` — fetch raw requests + produce `current/*.json` |
-| **2c** | `fetch-digest-data.py --mode daily-summary` — aggregate previous day → `daily/*.json` |
+| **2b** ✔ | `fetch-digest-data.py --mode refresh` — fetch raw requests + produce `current/*.json` |
+| **2c** ✔ | `fetch-digest-data.py --mode daily-summary` — aggregate previous day → `daily/*.json` |
 | **2d** | Cron setup — 5-min refresh cycle + 00:30 UTC daily summary |
 | **3a** | `digest.html` — Health overview + 5-day trend (HTML/CSS, no Chart.js) |
 | **3b** | Timing view (CSS bars with regression detection) |
@@ -352,6 +352,7 @@ accidentally hammering the API with a wide time window on a busy queue.
 | `buildbot-dependency.json` | Source of truth for GTK/WPE builder → triggered-test-queue mapping |
 | `buildbot-api-reference.md` | API reference for filter operators, field names, boolean caveats |
 | `digest.py` | Phase 1 CLI script (this deliverable) |
+| `fetch-digest-data.py` | Phase 2 data pipeline script (fetch, aggregate, inspect) |
 | `step-analysis.py` | Phase 4 CLI script (this deliverable) |
 
 ---
@@ -435,12 +436,12 @@ Per-builder request files because each builder is fetched independently.
 
 ```json
 {
-  "builderid": 6,
-  "name": "WPE-Linux-64-bit-Release-Build",
+  "builder_id": 6,
+  "builder_name": "WPE-Linux-64-bit-Release-Build",
   "fetched_at": "2026-03-11T14:30:00Z",
   "window": {
-    "start": "2026-03-10T14:30:00Z",
-    "end": "2026-03-11T14:30:00Z"
+    "start_ts": 1741614600.0,
+    "end_ts": 1741701000.0
   },
   "requests": [
     {"buildrequestid": 123456, "submitted_at": 1710000000,
@@ -475,19 +476,41 @@ Write to `daily/YYYY-MM-DD.json`. Single cron entry.
 **Daily cutoff caveat:** Accepts that a few requests submitted near midnight
 but still running at 00:30 will be missed from the daily summary.
 
+### 10.7.1 Merge-by-builder semantics
+
+Both `refresh` and `daily-summary` merge results into existing output files
+**by `builderid`** by default. When writing `current/*.json` or
+`daily/YYYY-MM-DD.json`, the script loads the existing file (if any),
+replaces entries whose `builderid` matches a builder being updated, and
+keeps all other existing entries intact. This enables **staggered updates**:
+different builder subsets can be refreshed independently without losing
+data for builders not included in the current run.
+
+The `--replace-existing` flag disables this merge and overwrites the output
+file entirely, which is useful for clean regeneration.
+
 ### 10.8 Script interface
 
 New script: `digest/fetch-digest-data.py`
 
 ```
-fetch-digest-data.py --mode refresh|daily-summary
+fetch-digest-data.py --mode refresh|daily-summary|inspect
                      --builder-id ID [ID ...]
                      --data-dir PATH
+                     [--date YYYY-MM-DD]
+                     [--replace-existing]
                      [--base-url URL]
+                     [-v]
 ```
 
 - `--mode refresh`: fetch raw requests + produce `current/*.json`
 - `--mode daily-summary`: aggregate previous day → `daily/*.json`
+- `--mode inspect`: report on stored data (request files, current snapshots,
+  daily summaries) without fetching or writing
+- `--date`: target date for `daily-summary` (default: yesterday)
+- `--replace-existing`: overwrite the output file entirely instead of merging
+  by builder (see §10.7.1)
+- `-v`/`--verbose`: print each API request URL to stderr
 - Reuses from `digest.py`: `api_get`, `fetch_build_requests_in_window`,
   `compute_outcomes`, `compute_timing`, `render_json`
 
