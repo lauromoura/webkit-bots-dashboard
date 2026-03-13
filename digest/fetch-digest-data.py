@@ -11,6 +11,7 @@ Usage examples:
   fetch-digest-data.py --mode refresh --builder-id 6 40 --data-dir digest/data -v
   fetch-digest-data.py --mode daily-summary --builder-id 6 40 --data-dir digest/data
   fetch-digest-data.py --mode daily-summary --builder-id 6 40 --data-dir digest/data --date 2026-03-05
+  fetch-digest-data.py --mode inspect --data-dir digest/data
   fetch-digest-data.py --mode inspect --builder-id 6 40 --data-dir digest/data
 """
 
@@ -44,9 +45,9 @@ def parse_args():
     )
     parser.add_argument(
         "--builder-id",
-        required=True,
         nargs="+",
         type=int,
+        default=None,
         metavar="ID",
         help="One or more builder IDs (integers)",
     )
@@ -381,11 +382,33 @@ def mode_daily_summary(args):
 # Mode: inspect
 # ---------------------------------------------------------------------------
 
+def discover_builder_ids(data_dir):
+    """Discover builder IDs from stored request files on disk."""
+    requests_dir = os.path.join(data_dir, "requests")
+    if not os.path.isdir(requests_dir):
+        return []
+    ids = []
+    for f in sorted(os.listdir(requests_dir)):
+        if f.startswith("builder-") and f.endswith(".json"):
+            try:
+                ids.append(int(f[len("builder-"):-len(".json")]))
+            except ValueError:
+                pass
+    return ids
+
+
 def mode_inspect(args):
     data_dir = args.data_dir
 
+    builder_ids = args.builder_id
+    if builder_ids is None:
+        builder_ids = discover_builder_ids(data_dir)
+        if not builder_ids:
+            print("No stored builder data found in {}/requests/".format(data_dir))
+            return
+
     print("=== Stored raw requests ===")
-    for builder_id in args.builder_id:
+    for builder_id in builder_ids:
         stored = load_stored_requests(data_dir, builder_id)
         if stored is None:
             print("  builder-{}.json: no stored data".format(builder_id))
@@ -468,6 +491,11 @@ def mode_inspect(args):
 def main():
     args = parse_args()
     digest._verbose = args.verbose
+
+    if args.mode in ("refresh", "daily-summary") and args.builder_id is None:
+        print("Error: --builder-id is required for '{}' mode.".format(args.mode),
+              file=sys.stderr)
+        sys.exit(1)
 
     if args.mode == "refresh":
         mode_refresh(args)
