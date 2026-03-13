@@ -6,7 +6,7 @@ import { renderPageHeader } from "../components/page-header.js";
 async function fetchSnapshot(window) {
     const url = `./digest/data/current/${window}.json`;
     try {
-        const resp = await fetch(url);
+        const resp = await fetch(url, { cache: "no-store" });
         if (!resp.ok) return null;
         return await resp.json();
     } catch {
@@ -209,9 +209,10 @@ function renderAttentionSection(builders) {
 function renderHealthySection(builders) {
     if (builders.length === 0) return null;
 
-    const rows = builders.map((entry) => {
+    const rows = [];
+    builders.forEach((entry) => {
         const { metrics } = entry;
-        return el("tr", null, [
+        const dataRow = el("tr", { className: "digest-healthy-row" }, [
             el("td", null, [
                 el("a", { href: `./builder.html?builder=${entry.builderid}` }, [entry.name]),
             ]),
@@ -219,6 +220,18 @@ function renderHealthySection(builders) {
             el("td", { textContent: String(entry.total_requests) }),
             el("td", { textContent: formatDuration(metrics.medianTotalTime) }),
         ]);
+        const detailRow = el("tr", { className: "digest-healthy-detail", style: "display: none;" }, [
+            el("td", { colSpan: 4 }, [renderCardDetail(entry)]),
+        ]);
+
+        dataRow.addEventListener("click", (e) => {
+            if (e.target.closest("a")) return;
+            const visible = detailRow.style.display !== "none";
+            detailRow.style.display = visible ? "none" : "";
+            dataRow.classList.toggle("expanded", !visible);
+        });
+
+        rows.push(dataRow, detailRow);
     });
 
     return el("div", { className: "digest-section" }, [
