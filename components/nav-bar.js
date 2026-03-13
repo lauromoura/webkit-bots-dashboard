@@ -6,7 +6,7 @@ const NAV_LINKS = [
     { href: "./job-duration.html",  label: "Job Duration" },
     { href: "./queue.html",         label: "Queues overview" },
     { href: "./ews-queue.html",     label: "EWS Queues" },
-    { href: "./digest.html",        label: "Digest" },
+    { href: "./pass-ratio.html",     label: "Pass Ratio" },
 ];
 
 /**

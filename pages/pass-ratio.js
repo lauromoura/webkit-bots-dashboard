@@ -297,7 +297,7 @@ function renderMeta(data, onRefresh) {
 
 async function init() {
     const app = document.getElementById("app");
-    app.appendChild(renderPageHeader("QA Digest"));
+    app.appendChild(renderPageHeader("Pass Ratio"));
 
     let currentWindow = "24h";
     const contentArea = el("div", { id: "digest-content" });
