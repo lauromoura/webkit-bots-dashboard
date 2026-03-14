@@ -18,7 +18,9 @@ import argparse
 import json
 import statistics
 import sys
+import time
 from datetime import datetime, timedelta, timezone
+from http.client import IncompleteRead
 from urllib import error, parse, request
 
 # ---------------------------------------------------------------------------
@@ -233,6 +235,7 @@ def summary_stats(values):
 # ---------------------------------------------------------------------------
 
 _verbose = False  # set to True by --verbose; checked inside api_get()
+_MAX_RETRIES = 3
 
 
 def api_get(base_url, path):
@@ -240,18 +243,26 @@ def api_get(base_url, path):
     if _verbose:
         print("GET " + url, file=sys.stderr, end="", flush=True)
     req = request.Request(url)
-    try:
-        with request.urlopen(req) as response:
-            raw = response.read()
+    for attempt in range(1, _MAX_RETRIES + 1):
+        try:
+            with request.urlopen(req) as response:
+                raw = response.read()
+                if _verbose:
+                    print("  →  {:,} B".format(len(raw)), file=sys.stderr)
+                return json.loads(raw.decode("utf-8"))
+        except error.HTTPError as e:
             if _verbose:
-                print("  →  {:,} B".format(len(raw)), file=sys.stderr)
-            return json.loads(raw.decode("utf-8"))
-    except error.HTTPError as e:
-        if _verbose:
-            print("  →  HTTP {}".format(e.code), file=sys.stderr)
-        else:
-            print("HTTP {}: {}".format(e.code, url), file=sys.stderr)
-        raise
+                print("  →  HTTP {}".format(e.code), file=sys.stderr)
+            else:
+                print("HTTP {}: {}".format(e.code, url), file=sys.stderr)
+            raise
+        except (IncompleteRead, error.URLError) as e:
+            if attempt == _MAX_RETRIES:
+                raise
+            wait = attempt  # 1s, 2s
+            print("  ⚠  {} — retry {}/{} in {}s".format(
+                e, attempt, _MAX_RETRIES, wait), file=sys.stderr)
+            time.sleep(wait)
 
 
 _builders_cache = None
