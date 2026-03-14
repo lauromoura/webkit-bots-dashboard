@@ -459,8 +459,11 @@ def mode_inspect(args):
                 path = os.path.join(current_dir, f)
                 stat = os.stat(path)
                 mtime = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
-                print("  {}  ({:,} B, modified {})".format(
-                    f, stat.st_size, mtime.strftime("%Y-%m-%d %H:%M UTC")))
+                with open(path) as fh:
+                    data = json.load(fh)
+                n_builders = len(data.get("builders", []))
+                print("  {}  ({} builders, {:,} B, modified {})".format(
+                    f, n_builders, stat.st_size, mtime.strftime("%Y-%m-%d %H:%M UTC")))
         else:
             print("  (none)")
     else:
@@ -477,7 +480,10 @@ def mode_inspect(args):
             for f in files:
                 path = os.path.join(daily_dir, f)
                 stat = os.stat(path)
-                print("    {}  ({:,} B)".format(f, stat.st_size))
+                with open(path) as fh:
+                    data = json.load(fh)
+                n_builders = len(data.get("builders", []))
+                print("    {}  ({} builders, {:,} B)".format(f, n_builders, stat.st_size))
         else:
             print("  (none)")
     else:
