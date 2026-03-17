@@ -2,7 +2,18 @@ import { el } from "../components/_dom.js";
 import { renderPageHeader } from "../components/page-header.js";
 import { computeMetrics, formatPercent, formatDuration, renderCardDetail } from "./_digest-utils.js";
 
-// --- Data loading ---
+// --- Date helpers ---
+
+function formatDateStr(date) {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+function todayStr() {
+    return formatDateStr(new Date());
+}
 
 function getDefaultDates(n = 5) {
     const dates = [];
@@ -10,12 +21,73 @@ function getDefaultDates(n = 5) {
     for (let i = n - 1; i >= 0; i--) {
         const d = new Date(today);
         d.setDate(d.getDate() - i);
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const dd = String(d.getDate()).padStart(2, "0");
-        dates.push(`${yyyy}-${mm}-${dd}`);
+        dates.push(formatDateStr(d));
     }
     return dates;
+}
+
+function getDateRange(fromStr, toStr) {
+    let from = new Date(fromStr + "T00:00:00");
+    let to = new Date(toStr + "T00:00:00");
+    if (from > to) [from, to] = [to, from];
+
+    const MAX_DAYS = 30;
+    const diffDays = Math.round((to - from) / (86400000)) + 1;
+    if (diffDays > MAX_DAYS) {
+        from = new Date(to);
+        from.setDate(from.getDate() - MAX_DAYS + 1);
+    }
+
+    const dates = [];
+    const cur = new Date(from);
+    while (cur <= to) {
+        dates.push(formatDateStr(cur));
+        cur.setDate(cur.getDate() + 1);
+    }
+    return { dates, truncated: diffDays > MAX_DAYS };
+}
+
+// --- URL parameter support ---
+
+function getDateParams() {
+    const params = new URLSearchParams(window.location.search);
+    const from = params.get("from");
+    const to = params.get("to");
+    if (from && to) return { from, to };
+    return null;
+}
+
+function setDateParams(from, to) {
+    const url = new URL(window.location);
+    url.searchParams.set("from", from);
+    url.searchParams.set("to", to);
+    history.replaceState(null, "", url);
+}
+
+// --- Earliest date probe ---
+
+let cachedEarliestDate = null;
+
+async function probeEarliestDate() {
+    if (cachedEarliestDate) return cachedEarliestDate;
+    const today = new Date();
+    let consecutive404 = 0;
+    let earliest = todayStr();
+    for (let i = 0; i < 60; i++) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const dateStr = formatDateStr(d);
+        const resp = await fetch(`./digest/data/daily/${dateStr}.json`, { method: "HEAD", cache: "no-store" }).catch(() => null);
+        if (resp && resp.ok) {
+            earliest = dateStr;
+            consecutive404 = 0;
+        } else {
+            consecutive404++;
+            if (consecutive404 >= 3) break;
+        }
+    }
+    cachedEarliestDate = earliest;
+    return earliest;
 }
 
 async function fetchDailyFile(dateStr) {
@@ -180,27 +252,83 @@ function renderTrendPage(mergedBuilders, dates) {
     return container;
 }
 
+// --- Resolve current dates from URL or defaults ---
+
+function resolveDates() {
+    const params = getDateParams();
+    if (params) {
+        const { dates, truncated } = getDateRange(params.from, params.to);
+        return { dates, truncated };
+    }
+    return { dates: getDefaultDates(5), truncated: false };
+}
+
 // --- Page init ---
 
 async function init() {
     const app = document.getElementById("app");
     app.appendChild(renderPageHeader("Daily Trend"));
 
-    const contentArea = el("div", { id: "digest-content" });
     const controlsArea = el("div", { className: "digest-controls" });
+    const feedbackArea = el("div");
+    const contentArea = el("div", { id: "digest-content" });
     app.appendChild(controlsArea);
+    app.appendChild(feedbackArea);
     app.appendChild(contentArea);
+
+    const earliestPromise = probeEarliestDate();
+
+    const fromInput = el("input", { type: "date", className: "digest-trend-date-input" });
+    const toInput = el("input", { type: "date", className: "digest-trend-date-input" });
+
+    earliestPromise.then((earliest) => {
+        fromInput.min = earliest;
+        toInput.min = earliest;
+        fromInput.max = todayStr();
+        toInput.max = todayStr();
+    });
+
+    function applyRange(from, to) {
+        fromInput.value = from;
+        toInput.value = to;
+        setDateParams(from, to);
+        loadAndRender();
+    }
+
+    function quickSelect(n) {
+        const today = new Date();
+        const from = new Date(today);
+        from.setDate(from.getDate() - n + 1);
+        applyRange(formatDateStr(from), todayStr());
+    }
+
+    const goBtn = el("button", { className: "digest-trend-quick-btn", textContent: "Go", onclick: () => {
+        if (fromInput.value && toInput.value) applyRange(fromInput.value, toInput.value);
+    }});
+
+    const controlsRow = el("div", { className: "digest-trend-controls" }, [
+        el("label", null, ["From ", fromInput]),
+        el("label", null, ["To ", toInput]),
+        goBtn,
+        el("button", { className: "digest-trend-quick-btn", textContent: "5 days", onclick: () => quickSelect(5) }),
+        el("button", { className: "digest-trend-quick-btn", textContent: "7 days", onclick: () => quickSelect(7) }),
+        el("button", { className: "digest-trend-quick-btn", textContent: "14 days", onclick: () => quickSelect(14) }),
+        el("button", { className: "digest-refresh-btn", textContent: "Refresh", onclick: () => loadAndRender() }),
+    ]);
+
+    controlsArea.appendChild(controlsRow);
 
     async function loadAndRender() {
         contentArea.innerHTML = "";
-        controlsArea.innerHTML = "";
+        feedbackArea.innerHTML = "";
 
-        const dates = getDefaultDates(5);
+        const { dates, truncated } = resolveDates();
+        fromInput.value = dates[0];
+        toInput.value = dates[dates.length - 1];
 
-        controlsArea.appendChild(el("div", { className: "digest-meta" }, [
-            el("span", { textContent: `Range: ${dates[0]} to ${dates[dates.length - 1]}` }),
-            el("button", { className: "digest-refresh-btn", textContent: "Refresh", onclick: loadAndRender }),
-        ]));
+        if (truncated) {
+            feedbackArea.appendChild(el("div", { className: "digest-trend-missing", textContent: "Range exceeded 30 days — showing latest 30." }));
+        }
 
         const dayResults = await fetchAllDays(dates);
 
@@ -211,6 +339,14 @@ async function init() {
                 ])
             );
             return;
+        }
+
+        // Missing dates feedback
+        if (dayResults.length < dates.length) {
+            const loadedSet = new Set(dayResults.map((r) => r.date));
+            const missing = dates.filter((d) => !loadedSet.has(d));
+            feedbackArea.appendChild(el("div", { className: "digest-trend-missing",
+                textContent: `Loaded ${dayResults.length} of ${dates.length} days (missing: ${missing.join(", ")})` }));
         }
 
         const loadedDates = dayResults.map((r) => r.date);
