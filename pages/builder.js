@@ -6,10 +6,124 @@ import { renderPageHeader } from "../components/page-header.js";
 import { renderBuildHistoryTable } from "../components/build-history-table.js";
 import { classifyWorker } from "../components/queue-row.js";
 import { el } from "../components/_dom.js";
+import { computeMetrics, formatPercent, formatDuration } from "./_digest-utils.js";
 
 const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
 const EWS_BASE_URL = isLocal ? "/ews/api/v2/" : "https://ews-build.webkit.org/api/v2/";
 const EWS_BUILDBOT_BASE = "https://ews-build.webkit.org/";
+
+function formatDateStr(date) {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+async function fetchBuilderDailySummary(builderId, n = 7) {
+    const id = parseInt(builderId, 10);
+    const dates = [];
+    const today = new Date();
+    for (let i = n - 1; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        dates.push(formatDateStr(d));
+    }
+
+    const results = await Promise.all(dates.map(async (dateStr) => {
+        try {
+            const resp = await fetch(`./digest/data/daily/${dateStr}.json`, { cache: "no-store" });
+            if (!resp.ok) return { date: dateStr, builder: null };
+            const data = await resp.json();
+            const entry = data.builders?.find(b => b.builderid === id);
+            return { date: dateStr, builder: entry || null };
+        } catch {
+            return { date: dateStr, builder: null };
+        }
+    }));
+
+    const days = new Map();
+    for (const { date, builder } of results) {
+        if (!builder) continue;
+        const metrics = computeMetrics(builder);
+        days.set(date, { passRate: metrics.passRate, healthStatus: metrics.healthStatus, builder });
+    }
+
+    return { dates, days };
+}
+
+function buildDayTooltip(dayData) {
+    const { outcomes, timing } = dayData.builder;
+    const parts = [];
+
+    // Outcome counts
+    const outcomeParts = Object.entries(outcomes)
+        .filter(([, v]) => v > 0)
+        .map(([k, v]) => `${k}: ${v}`);
+    if (outcomeParts.length > 0)
+        parts.push("Outcomes: " + outcomeParts.join(", "));
+
+    // Timing breakdown
+    const fmtPhase = (label, stats) => {
+        if (!stats || stats.n === 0) return null;
+        return `${label} avg ${formatDuration(stats.avg_s)}, median ${formatDuration(stats.median_s)}, p90 ${formatDuration(stats.p90_s)}`;
+    };
+    const timingLines = [
+        fmtPhase("Exec", timing.execution),
+        fmtPhase("Queue", timing.queue_wait),
+    ].filter(Boolean);
+    if (timingLines.length > 0)
+        parts.push("Timing: " + timingLines.join("\n        "));
+
+    return parts.join("\n");
+}
+
+function renderDailySummarySection(dates, days) {
+    // Filter to dates that have data, newest first
+    const activeDates = [...dates].reverse().filter(d => days.has(d));
+    if (activeDates.length === 0) return null;
+
+    const cellClass = (status) => {
+        const map = { green: "digest-trend-cell-green", yellow: "digest-trend-cell-yellow", red: "digest-trend-cell-red" };
+        return map[status] || "digest-trend-cell-gray";
+    };
+
+    // Precompute tooltips per date
+    const tooltips = new Map();
+    for (const date of activeDates)
+        tooltips.set(date, buildDayTooltip(days.get(date)));
+
+    // Header row: empty label cell + date columns
+    const headerCells = [el("th")];
+    for (const date of activeDates)
+        headerCells.push(el("th", { textContent: date.slice(5) }));
+
+    // Metric row definitions
+    const metrics = [
+        { label: "Pass rate", value: (d) => formatPercent(d.passRate), cellClass: (d) => cellClass(d.healthStatus) },
+        { label: "Completed", value: (d) => String(d.builder.completed) },
+        { label: "Skipped", value: (d) => String(d.builder.outcomes.Skipped || 0) },
+        { label: "Avg exec", value: (d) => formatDuration(d.builder.timing.execution?.avg_s) },
+    ];
+
+    const bodyRows = metrics.map(metric => {
+        const cells = [el("td", { textContent: metric.label })];
+        for (const date of activeDates) {
+            const dayData = days.get(date);
+            const attrs = { textContent: metric.value(dayData), title: tooltips.get(date) };
+            if (metric.cellClass) attrs.className = metric.cellClass(dayData);
+            cells.push(el("td", attrs));
+        }
+        return el("tr", null, cells);
+    });
+
+    return el("section", null, [
+        el("h3", null, ["Daily summary"]),
+        el("table", { className: "digest-trend-table" }, [
+            el("thead", null, [el("tr", null, headerCells)]),
+            el("tbody", null, bodyRows),
+        ]),
+    ]);
+}
 
 async function init() {
     const app = document.getElementById("app");
@@ -50,11 +164,13 @@ async function init() {
     ]);
     app.appendChild(infoSection);
 
-    // Fetch builds, pending requests, and full worker data in parallel
-    const [requestsData, buildsData, allWorkers] = await Promise.all([
+    // Fetch builds, pending requests, full worker data, and digest summary in parallel
+    const digestPromise = isEWS ? Promise.resolve(null) : fetchBuilderDailySummary(builderId);
+    const [requestsData, buildsData, allWorkers, digestResult] = await Promise.all([
         api.getAllPendingRequests(),
         api.fetchAPI(`builders/${builderId}/builds?limit=100&order=-number&property=identifier`),
         api.getAllWorkers(),
+        digestPromise,
     ]);
 
     // Derive worker names map and connected worker count for this builder
@@ -165,6 +281,12 @@ async function init() {
             el("ul", null, items),
         ]);
         app.appendChild(banner);
+    }
+
+    // Daily summary section (post-commit builders only)
+    if (digestResult) {
+        const summarySection = renderDailySummarySection(digestResult.dates, digestResult.days);
+        if (summarySection) app.appendChild(summarySection);
     }
 
     if (!buildsData?.builds?.length) {
