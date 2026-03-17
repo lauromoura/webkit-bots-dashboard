@@ -7,6 +7,7 @@ const NAV_LINKS = [
     { href: "./queue.html",         label: "Queues overview" },
     { href: "./ews-queue.html",     label: "EWS Queues" },
     { href: "./pass-ratio.html",     label: "Pass Ratio" },
+    { href: "./daily-trend.html",    label: "Daily Trend" },
 ];
 
 /**

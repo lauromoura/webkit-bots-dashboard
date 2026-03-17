@@ -503,6 +503,84 @@ a.worker-entry:hover {
     color: #1565c0;
 }
 
+/* ---- Daily Trend heat map ---- */
+
+.digest-trend-group {
+    margin: 16px 0;
+}
+
+.digest-trend-group h3 {
+    font-size: 15px;
+    margin: 12px 0 6px;
+}
+
+.digest-trend-table {
+    table-layout: auto;
+    width: auto;
+    max-width: 100%;
+    border: 1px solid #ccc;
+}
+
+.digest-trend-table th,
+.digest-trend-table td {
+    padding: 4px 10px;
+    text-align: center;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.digest-trend-table th:first-child,
+.digest-trend-table td:first-child {
+    text-align: left;
+}
+
+.digest-trend-table a {
+    color: #1565c0;
+}
+
+.digest-trend-row {
+    cursor: pointer;
+}
+
+.digest-trend-row:hover {
+    outline: 2px solid #1565c0;
+    outline-offset: -2px;
+}
+
+.digest-trend-row.expanded {
+    font-weight: bold;
+}
+
+.digest-trend-cell-green { background-color: #c8e6c9; }
+.digest-trend-cell-yellow { background-color: #fff8e1; }
+.digest-trend-cell-red { background-color: #ffcdd2; }
+.digest-trend-cell-gray { background-color: #eeeeee; color: #999; }
+
+.digest-trend-table td.digest-trend-arrow-up { color: #2e7d32; font-weight: bold; font-size: 18px; }
+.digest-trend-table td.digest-trend-arrow-down { color: #c62828; font-weight: bold; font-size: 18px; }
+.digest-trend-table td.digest-trend-arrow-stable { color: #757575; font-size: 18px; }
+
+.digest-trend-detail-row td {
+    background: #f7f7f7;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+.digest-trend-detail {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.digest-trend-day-section {
+    min-width: 200px;
+}
+
+.digest-trend-day-section h4 {
+    margin: 4px 0;
+    font-size: 12px;
+}
+
 @media only screen and (max-width: 1024px) {
     .build-history,
     .build-history thead,
