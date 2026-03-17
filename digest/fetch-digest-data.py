@@ -13,6 +13,7 @@ Usage examples:
   fetch-digest-data.py --mode daily-summary --builder-id 6 40 --data-dir digest/data --date 2026-03-05
   fetch-digest-data.py --mode inspect --data-dir digest/data
   fetch-digest-data.py --mode inspect --builder-id 6 40 --data-dir digest/data
+  fetch-digest-data.py --mode refresh --builder-id-file post-commit-ids.txt --data-dir digest/data
 """
 
 import argparse
@@ -50,6 +51,11 @@ def parse_args():
         default=None,
         metavar="ID",
         help="One or more builder IDs (integers)",
+    )
+    parser.add_argument(
+        "--builder-id-file",
+        metavar="FILE",
+        help="Read builder IDs from FILE (space/newline-separated integers)",
     )
     parser.add_argument(
         "--data-dir",
@@ -497,6 +503,14 @@ def mode_inspect(args):
 def main():
     args = parse_args()
     digest._verbose = args.verbose
+
+    if args.builder_id_file:
+        with open(args.builder_id_file) as f:
+            file_ids = [int(tok) for tok in f.read().split()]
+        if args.builder_id is None:
+            args.builder_id = file_ids
+        else:
+            args.builder_id.extend(file_ids)
 
     if args.mode in ("refresh", "daily-summary") and args.builder_id is None:
         print("Error: --builder-id is required for '{}' mode.".format(args.mode),
