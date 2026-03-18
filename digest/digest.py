@@ -28,6 +28,9 @@ from urllib import error, parse, request
 # ---------------------------------------------------------------------------
 
 DEFAULT_BASE_URL = "https://build.webkit.org/api/v2/"
+EWS_BASE_URL = "https://ews-build.webkit.org/api/v2/"
+DEFAULT_DATA_DIR = "digest/data"
+EWS_DATA_DIR = "digest/data-ews"
 PAGE_LIMIT = 500
 
 RESULT_NAMES = {

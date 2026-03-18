@@ -8,12 +8,11 @@ Modes:
   inspect        — Report on stored data without fetching or writing
 
 Usage examples:
-  fetch-digest-data.py --mode refresh --builder-id 6 40 --data-dir digest/data -v
-  fetch-digest-data.py --mode daily-summary --builder-id 6 40 --data-dir digest/data
-  fetch-digest-data.py --mode daily-summary --builder-id 6 40 --data-dir digest/data --date 2026-03-05
-  fetch-digest-data.py --mode inspect --data-dir digest/data
-  fetch-digest-data.py --mode inspect --builder-id 6 40 --data-dir digest/data
-  fetch-digest-data.py --mode refresh --builder-id-file post-commit-ids.txt --data-dir digest/data
+  fetch-digest-data.py --mode refresh --builder-id 6 40 -v
+  fetch-digest-data.py --mode refresh --ews --builder-id-file ews-ids.txt -v
+  fetch-digest-data.py --mode daily-summary --builder-id 6 40 --date 2026-03-05
+  fetch-digest-data.py --mode inspect
+  fetch-digest-data.py --mode refresh --builder-id 6 --data-dir /tmp/custom -v
 """
 
 import argparse
@@ -59,9 +58,9 @@ def parse_args():
     )
     parser.add_argument(
         "--data-dir",
-        required=True,
+        default=None,
         metavar="PATH",
-        help="Directory for stored data",
+        help="Directory for stored data (default: digest/data, or digest/data-ews with --ews)",
     )
     parser.add_argument(
         "--date",
@@ -69,9 +68,14 @@ def parse_args():
         help="Target date for daily-summary mode (default: yesterday)",
     )
     parser.add_argument(
+        "--ews",
+        action="store_true",
+        help="Use EWS server instead of post-commit",
+    )
+    parser.add_argument(
         "--base-url",
-        default=digest.DEFAULT_BASE_URL,
-        help="Buildbot API base URL (default: %(default)s)",
+        default=None,
+        help="Buildbot API base URL (default depends on --ews)",
     )
     parser.add_argument(
         "--replace-existing",
@@ -503,6 +507,11 @@ def mode_inspect(args):
 def main():
     args = parse_args()
     digest._verbose = args.verbose
+
+    if args.base_url is None:
+        args.base_url = digest.EWS_BASE_URL if args.ews else digest.DEFAULT_BASE_URL
+    if args.data_dir is None:
+        args.data_dir = digest.EWS_DATA_DIR if args.ews else digest.DEFAULT_DATA_DIR
 
     if args.builder_id_file:
         with open(args.builder_id_file) as f:

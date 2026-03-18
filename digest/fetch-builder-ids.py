@@ -11,8 +11,6 @@ import argparse, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import digest
 
-EWS_BASE_URL = "https://ews-build.webkit.org/api/v2/"
-
 RELEVANT_TAGS = {"WPE", "GTK", "ARMv7", "JSCOnly"}
 
 
@@ -27,7 +25,7 @@ def main():
         help="Print builder names to stderr")
     args = parser.parse_args()
 
-    base_url = args.base_url or (EWS_BASE_URL if args.ews else digest.DEFAULT_BASE_URL)
+    base_url = args.base_url or (digest.EWS_BASE_URL if args.ews else digest.DEFAULT_BASE_URL)
 
     data = digest.api_get(base_url,
         "builders?field=builderid&field=name&field=tags&field=masterids")
