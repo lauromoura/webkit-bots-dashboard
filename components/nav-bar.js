@@ -2,6 +2,7 @@ import { el } from "./_dom.js";
 
 const NAV_LINKS = [
     { href: "./index.html",         label: "Index", bold: true },
+    { href: "./gardening.html",     label: "Gardening" },
     { href: "./bot-watcher.html",   label: "Bot Watcher" },
     { href: "./results-stats.html", label: "Results Stats" },
     { href: "./job-duration.html",  label: "Job Duration" },

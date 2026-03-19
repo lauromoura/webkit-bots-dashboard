@@ -56,6 +56,11 @@ tbody tr:hover {
     background-color: yellow;
 }
 
+.soft-failure {
+    background-color: #ffe066;
+    border-radius: 5px;
+}
+
 .otherBuilds > ul {
     list-style: none;
 }
