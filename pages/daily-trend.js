@@ -1,6 +1,6 @@
 import { el } from "../components/_dom.js";
 import { renderPageHeader } from "../components/page-header.js";
-import { computeMetrics, formatPercent, formatDuration, renderCardDetail } from "./_digest-utils.js";
+import { computeMetrics, computeEWSMetrics, formatPercent, formatDuration, renderCardDetail } from "./_digest-utils.js";
 
 // --- Date helpers ---
 
@@ -101,6 +101,25 @@ async function fetchDailyFile(dateStr) {
     }
 }
 
+async function fetchEWSDailyFile(dateStr) {
+    const url = `./digest/data-ews/daily/${dateStr}.json`;
+    try {
+        const resp = await fetch(url, { cache: "no-store" });
+        if (!resp.ok) return null;
+        return await resp.json();
+    } catch {
+        return null;
+    }
+}
+
+async function fetchAllEWSDays(dates) {
+    const results = await Promise.all(dates.map(async (dateStr) => {
+        const data = await fetchEWSDailyFile(dateStr);
+        return { date: dateStr, data };
+    }));
+    return results.filter((r) => r.data !== null);
+}
+
 async function fetchAllDays(dates) {
     const results = await Promise.all(dates.map(async (dateStr) => {
         const data = await fetchDailyFile(dateStr);
@@ -126,6 +145,30 @@ function mergeBuilderDays(dayResults) {
             const metrics = computeMetrics(builder);
             builderMap.get(builder.builderid).days[date] = {
                 passRate: metrics.passRate,
+                healthStatus: metrics.healthStatus,
+                builder,
+            };
+        }
+    }
+
+    return Array.from(builderMap.values());
+}
+
+function mergeEWSBuilderDays(dayResults) {
+    const builderMap = new Map();
+
+    for (const { date, data } of dayResults) {
+        for (const builder of data.builders) {
+            if (!builderMap.has(builder.builderid)) {
+                builderMap.set(builder.builderid, {
+                    builderid: builder.builderid,
+                    name: builder.name,
+                    days: {},
+                });
+            }
+            const metrics = computeEWSMetrics(builder);
+            builderMap.get(builder.builderid).days[date] = {
+                passRate: metrics.infraHealthRate,
                 healthStatus: metrics.healthStatus,
                 builder,
             };
@@ -239,7 +282,7 @@ function renderGroupTable(title, builders, dates) {
     ]);
 }
 
-function renderTrendPage(mergedBuilders, dates) {
+function renderTrendPage(mergedBuilders, dates, ewsMergedBuilders, ewsDates) {
     const gtk = mergedBuilders.filter((b) => b.name.startsWith("GTK")).sort((a, b) => a.name.localeCompare(b.name));
     const wpe = mergedBuilders.filter((b) => b.name.startsWith("WPE")).sort((a, b) => a.name.localeCompare(b.name));
 
@@ -248,6 +291,12 @@ function renderTrendPage(mergedBuilders, dates) {
     const wpeTable = renderGroupTable("WPE", wpe, dates);
     if (gtkTable) container.appendChild(gtkTable);
     if (wpeTable) container.appendChild(wpeTable);
+
+    if (ewsMergedBuilders && ewsMergedBuilders.length > 0) {
+        const sortedEWS = ewsMergedBuilders.sort((a, b) => a.name.localeCompare(b.name));
+        const ewsTable = renderGroupTable("EWS Infrastructure Health", sortedEWS, ewsDates);
+        if (ewsTable) container.appendChild(ewsTable);
+    }
 
     return container;
 }
@@ -330,9 +379,12 @@ async function init() {
             feedbackArea.appendChild(el("div", { className: "digest-trend-missing", textContent: "Range exceeded 30 days — showing latest 30." }));
         }
 
-        const dayResults = await fetchAllDays(dates);
+        const [dayResults, ewsDayResults] = await Promise.all([
+            fetchAllDays(dates),
+            fetchAllEWSDays(dates),
+        ]);
 
-        if (dayResults.length === 0) {
+        if (dayResults.length === 0 && ewsDayResults.length === 0) {
             contentArea.appendChild(
                 el("div", { className: "digest-error" }, [
                     "No daily data found. Ensure digest/data/daily/ contains JSON files.",
@@ -351,7 +403,11 @@ async function init() {
 
         const loadedDates = dayResults.map((r) => r.date);
         const mergedBuilders = mergeBuilderDays(dayResults);
-        contentArea.appendChild(renderTrendPage(mergedBuilders, loadedDates));
+
+        const ewsLoadedDates = ewsDayResults.map((r) => r.date);
+        const ewsMergedBuilders = ewsDayResults.length > 0 ? mergeEWSBuilderDays(ewsDayResults) : [];
+
+        contentArea.appendChild(renderTrendPage(mergedBuilders, loadedDates, ewsMergedBuilders, ewsLoadedDates));
     }
 
     await loadAndRender();

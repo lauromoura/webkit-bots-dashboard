@@ -1,11 +1,12 @@
 import { el } from "../components/_dom.js";
 import { renderPageHeader } from "../components/page-header.js";
-import { computeMetrics, formatPercent, formatDuration, renderCardDetail } from "./_digest-utils.js";
+import { computeMetrics, computeEWSMetrics, formatPercent, formatDuration, renderCardDetail } from "./_digest-utils.js";
 
 // --- Data loading ---
 
-async function fetchSnapshot(window) {
-    const url = `./digest/data/current/${window}.json`;
+async function fetchSnapshot(window, ews = false) {
+    const base = ews ? "./digest/data-ews/current" : "./digest/data/current";
+    const url = `${base}/${window}.json`;
     try {
         const resp = await fetch(url, { cache: "no-store" });
         if (!resp.ok) return null;
@@ -41,7 +42,154 @@ function classifyBuilders(builders) {
     return { attention, healthy, idle };
 }
 
+function classifyEWSBuilders(builders) {
+    const attention = [];
+    const healthy = [];
+    const idle = [];
+
+    for (const b of builders) {
+        const metrics = computeEWSMetrics(b);
+        const entry = { ...b, metrics };
+        if (b.total_requests === 0 || metrics.infraHealthRate === null) {
+            idle.push(entry);
+        } else if (metrics.infraHealthRate < 0.9) {
+            attention.push(entry);
+        } else {
+            healthy.push(entry);
+        }
+    }
+
+    attention.sort((a, b) => (a.metrics.infraHealthRate ?? -1) - (b.metrics.infraHealthRate ?? -1));
+    healthy.sort((a, b) => a.name.localeCompare(b.name));
+    idle.sort((a, b) => a.name.localeCompare(b.name));
+
+    return { attention, healthy, idle };
+}
+
 // --- Rendering ---
+
+function renderEWSAttentionCard(entry) {
+    const { metrics } = entry;
+    const statusClass = `digest-card-${metrics.healthStatus}`;
+
+    const card = el("div", { className: `digest-card ${statusClass}` });
+    let expanded = false;
+    let detailEl = null;
+
+    const header = el("div", { className: "digest-card-header" }, [
+        el("a", {
+            className: "digest-card-name",
+            href: `./builder.html?ews-builder=${entry.builderid}`,
+            onclick: (e) => e.stopPropagation(),
+        }, [entry.name]),
+        el("span", { className: "digest-badge", textContent: `Infra health: ${formatPercent(metrics.infraHealthRate)}` }),
+    ]);
+
+    const summary = el("div", { className: "digest-card-summary" }, [
+        el("span", { textContent: `${entry.total_requests} requests` }),
+        metrics.medianTotalTime != null
+            ? el("span", { textContent: `Median: ${formatDuration(metrics.medianTotalTime)}` })
+            : null,
+        metrics.primaryIssueType
+            ? el("span", { className: "digest-failure-type", textContent: metrics.primaryIssueType })
+            : null,
+    ].filter(Boolean));
+
+    card.appendChild(header);
+    card.appendChild(summary);
+
+    card.addEventListener("click", () => {
+        if (expanded) {
+            detailEl.remove();
+            detailEl = null;
+            expanded = false;
+            card.classList.remove("expanded");
+        } else {
+            detailEl = renderCardDetail(entry);
+            card.appendChild(detailEl);
+            expanded = true;
+            card.classList.add("expanded");
+        }
+    });
+
+    return card;
+}
+
+function renderEWSAttentionSection(builders) {
+    if (builders.length === 0) {
+        return el("div", { className: "digest-section" }, [
+            el("h2", { textContent: "Needs attention" }),
+            el("div", { className: "digest-all-green" }, [
+                "All EWS builders have healthy infrastructure!",
+            ]),
+        ]);
+    }
+
+    const cards = builders.map(renderEWSAttentionCard);
+    return el("div", { className: "digest-section" }, [
+        el("h2", { textContent: `Needs attention (${builders.length})` }),
+        el("div", { className: "digest-card-grid" }, cards),
+    ]);
+}
+
+function renderEWSHealthySection(builders) {
+    if (builders.length === 0) return null;
+
+    const rows = [];
+    builders.forEach((entry) => {
+        const { metrics } = entry;
+        const dataRow = el("tr", { className: "digest-healthy-row" }, [
+            el("td", null, [
+                el("a", { href: `./builder.html?ews-builder=${entry.builderid}` }, [entry.name]),
+            ]),
+            el("td", { textContent: formatPercent(metrics.infraHealthRate) }),
+            el("td", { textContent: String(entry.total_requests) }),
+            el("td", { textContent: formatDuration(metrics.medianTotalTime) }),
+        ]);
+        const detailRow = el("tr", { className: "digest-healthy-detail", style: "display: none;" }, [
+            el("td", { colSpan: 4 }, [renderCardDetail(entry)]),
+        ]);
+
+        dataRow.addEventListener("click", (e) => {
+            if (e.target.closest("a")) return;
+            const visible = detailRow.style.display !== "none";
+            detailRow.style.display = visible ? "none" : "";
+            dataRow.classList.toggle("expanded", !visible);
+        });
+
+        rows.push(dataRow, detailRow);
+    });
+
+    return el("div", { className: "digest-section" }, [
+        el("h2", { textContent: `Healthy (${builders.length})` }),
+        el("table", { className: "digest-healthy-table" }, [
+            el("thead", null, [
+                el("tr", null, [
+                    el("th", { textContent: "Builder" }),
+                    el("th", { textContent: "Infra Health" }),
+                    el("th", { textContent: "Requests" }),
+                    el("th", { textContent: "Median Time" }),
+                ]),
+            ]),
+            el("tbody", null, rows),
+        ]),
+    ]);
+}
+
+function renderEWSIdleSection(builders) {
+    if (builders.length === 0) return null;
+
+    const items = builders.map((entry) =>
+        el("li", null, [
+            el("a", { href: `./builder.html?ews-builder=${entry.builderid}` }, [entry.name]),
+        ])
+    );
+
+    return el("details", { className: "digest-section digest-idle" }, [
+        el("summary", null, [`Idle (${builders.length} builders with 0 requests)`]),
+        el("ul", null, items),
+    ]);
+}
 
 function renderAttentionCard(entry) {
     const { metrics } = entry;
@@ -218,29 +366,53 @@ async function init() {
             await loadAndRender();
         }));
 
-        const data = await fetchSnapshot(currentWindow);
+        const [data, ewsData] = await Promise.all([
+            fetchSnapshot(currentWindow),
+            fetchSnapshot(currentWindow, true),
+        ]);
 
-        if (!data) {
+        if (!data && !ewsData) {
             contentArea.appendChild(
                 el("div", { className: "digest-error" }, [
-                    `Failed to load data for ${currentWindow} window. Ensure digest/data/current/${currentWindow}.json exists.`,
+                    `Failed to load data for ${currentWindow} window.`,
                 ])
             );
             return;
         }
 
-        // Meta line with refresh
-        controlsArea.appendChild(renderMeta(data, loadAndRender));
+        // Post-commit section
+        if (data) {
+            controlsArea.appendChild(renderMeta(data, loadAndRender));
 
-        const { attention, healthy, idle } = classifyBuilders(data.builders);
+            contentArea.appendChild(el("h2", { className: "digest-group-title", textContent: "Post-Commit Pass Rate" }));
 
-        contentArea.appendChild(renderAttentionSection(attention));
+            const { attention, healthy, idle } = classifyBuilders(data.builders);
 
-        const healthyEl = renderHealthySection(healthy);
-        if (healthyEl) contentArea.appendChild(healthyEl);
+            contentArea.appendChild(renderAttentionSection(attention));
 
-        const idleEl = renderIdleSection(idle);
-        if (idleEl) contentArea.appendChild(idleEl);
+            const healthyEl = renderHealthySection(healthy);
+            if (healthyEl) contentArea.appendChild(healthyEl);
+
+            const idleEl = renderIdleSection(idle);
+            if (idleEl) contentArea.appendChild(idleEl);
+        }
+
+        // EWS section
+        if (ewsData) {
+            if (!data) controlsArea.appendChild(renderMeta(ewsData, loadAndRender));
+
+            contentArea.appendChild(el("h2", { className: "digest-group-title", textContent: "EWS Infrastructure Health" }));
+
+            const { attention, healthy, idle } = classifyEWSBuilders(ewsData.builders);
+
+            contentArea.appendChild(renderEWSAttentionSection(attention));
+
+            const healthyEl = renderEWSHealthySection(healthy);
+            if (healthyEl) contentArea.appendChild(healthyEl);
+
+            const idleEl = renderEWSIdleSection(idle);
+            if (idleEl) contentArea.appendChild(idleEl);
+        }
     }
 
     await loadAndRender();

@@ -6,7 +6,7 @@ import { renderPageHeader } from "../components/page-header.js";
 import { renderBuildHistoryTable } from "../components/build-history-table.js";
 import { classifyWorker } from "../components/queue-row.js";
 import { el } from "../components/_dom.js";
-import { computeMetrics, formatPercent, formatDuration } from "./_digest-utils.js";
+import { computeMetrics, computeEWSMetrics, formatPercent, formatDuration } from "./_digest-utils.js";
 
 const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
 const EWS_BASE_URL = isLocal ? "/ews/api/v2/" : "https://ews-build.webkit.org/api/v2/";
@@ -19,7 +19,7 @@ function formatDateStr(date) {
     return `${yyyy}-${mm}-${dd}`;
 }
 
-async function fetchBuilderDailySummary(builderId, n = 7) {
+async function fetchBuilderDailySummary(builderId, { ews = false, n = 7 } = {}) {
     const id = parseInt(builderId, 10);
     const dates = [];
     const today = new Date();
@@ -29,9 +29,12 @@ async function fetchBuilderDailySummary(builderId, n = 7) {
         dates.push(formatDateStr(d));
     }
 
+    const base = ews ? "./digest/data-ews/daily" : "./digest/data/daily";
+    const metricsFn = ews ? computeEWSMetrics : computeMetrics;
+
     const results = await Promise.all(dates.map(async (dateStr) => {
         try {
-            const resp = await fetch(`./digest/data/daily/${dateStr}.json`, { cache: "no-store" });
+            const resp = await fetch(`${base}/${dateStr}.json`, { cache: "no-store" });
             if (!resp.ok) return { date: dateStr, builder: null };
             const data = await resp.json();
             const entry = data.builders?.find(b => b.builderid === id);
@@ -44,11 +47,12 @@ async function fetchBuilderDailySummary(builderId, n = 7) {
     const days = new Map();
     for (const { date, builder } of results) {
         if (!builder) continue;
-        const metrics = computeMetrics(builder);
-        days.set(date, { passRate: metrics.passRate, healthStatus: metrics.healthStatus, builder });
+        const metrics = metricsFn(builder);
+        const rate = ews ? metrics.infraHealthRate : metrics.passRate;
+        days.set(date, { passRate: rate, healthStatus: metrics.healthStatus, builder });
     }
 
-    return { dates, days };
+    return { dates, days, ews };
 }
 
 function buildDayTooltip(dayData) {
@@ -77,7 +81,7 @@ function buildDayTooltip(dayData) {
     return parts.join("\n");
 }
 
-function renderDailySummarySection(dates, days) {
+function renderDailySummarySection(dates, days, ews = false) {
     // Filter to dates that have data, newest first
     const activeDates = [...dates].reverse().filter(d => days.has(d));
     if (activeDates.length === 0) return null;
@@ -98,8 +102,9 @@ function renderDailySummarySection(dates, days) {
         headerCells.push(el("th", { textContent: date.slice(5) }));
 
     // Metric row definitions
+    const rateLabel = ews ? "Infra health" : "Pass rate";
     const metrics = [
-        { label: "Pass rate", value: (d) => formatPercent(d.passRate), cellClass: (d) => cellClass(d.healthStatus) },
+        { label: rateLabel, value: (d) => formatPercent(d.passRate), cellClass: (d) => cellClass(d.healthStatus) },
         { label: "Completed", value: (d) => String(d.builder.completed) },
         { label: "Skipped", value: (d) => String(d.builder.outcomes.Skipped || 0) },
         { label: "Avg exec", value: (d) => formatDuration(d.builder.timing.execution?.avg_s) },
@@ -165,7 +170,7 @@ async function init() {
     app.appendChild(infoSection);
 
     // Fetch builds, pending requests, full worker data, and digest summary in parallel
-    const digestPromise = isEWS ? Promise.resolve(null) : fetchBuilderDailySummary(builderId);
+    const digestPromise = fetchBuilderDailySummary(builderId, { ews: isEWS });
     const [requestsData, buildsData, allWorkers, digestResult] = await Promise.all([
         api.getAllPendingRequests(),
         api.fetchAPI(`builders/${builderId}/builds?limit=100&order=-number&property=identifier`),
@@ -283,9 +288,9 @@ async function init() {
         app.appendChild(banner);
     }
 
-    // Daily summary section (post-commit builders only)
+    // Daily summary section
     if (digestResult) {
-        const summarySection = renderDailySummarySection(digestResult.dates, digestResult.days);
+        const summarySection = renderDailySummarySection(digestResult.dates, digestResult.days, digestResult.ews);
         if (summarySection) app.appendChild(summarySection);
     }
 

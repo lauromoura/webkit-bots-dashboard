@@ -2,6 +2,38 @@ import { el } from "../components/_dom.js";
 
 // --- Metric computation ---
 
+export function computeEWSMetrics(builder) {
+    const { completed, outcomes, timing } = builder;
+    const skipped = outcomes.Skipped || 0;
+    const executed = completed - skipped;
+    if (executed === 0) {
+        return { infraHealthRate: null, healthStatus: "idle", primaryIssueType: null, medianTotalTime: null };
+    }
+
+    // For EWS, Failure is normal (patch didn't pass). Only Exception/Retry/Dropped are infra problems.
+    const healthy = (outcomes.Success || 0) + (outcomes.Warnings || 0) + (outcomes.Failure || 0);
+    const infraHealthRate = healthy / executed;
+
+    let healthStatus = "red";
+    if (infraHealthRate >= 0.9) healthStatus = "green";
+    else if (infraHealthRate >= 0.7) healthStatus = "yellow";
+
+    // Find primary issue type (highest count among infra-problem outcomes)
+    let primaryIssueType = null;
+    let maxCount = 0;
+    for (const [type, count] of Object.entries(outcomes)) {
+        if (type === "Success" || type === "Warnings" || type === "Failure" || type === "Skipped") continue;
+        if (count > maxCount) {
+            maxCount = count;
+            primaryIssueType = type;
+        }
+    }
+
+    const medianTotalTime = timing.total ? timing.total.median_s : null;
+
+    return { infraHealthRate, healthStatus, primaryIssueType, medianTotalTime };
+}
+
 export function computeMetrics(builder) {
     const { completed, outcomes, timing } = builder;
     const skipped = outcomes.Skipped || 0;
