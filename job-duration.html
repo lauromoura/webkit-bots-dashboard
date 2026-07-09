@@ -238,9 +238,14 @@
         // Global variable for current builder
         let currentBuilderName = 'WPE-Linux-64-bit-Release-Build';
 
+        // In local dev, hit the same-origin proxy (dev-proxy.py) instead of the
+        // absolute URL, which the Buildbot CORS allow-list rejects from localhost.
+        const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+        const API_BASE = isLocal ? "/api/v2/" : "https://build.webkit.org/api/v2/";
+
         // Function to get API URL for current builder
         function getBuilderAPIUrl() {
-            return `https://build.webkit.org/api/v2/builders/${currentBuilderName}/builds?limit=100&order=-number&property=identifier`;
+            return `${API_BASE}builders/${currentBuilderName}/builds?limit=100&order=-number&property=identifier`;
         }
 
         // Function to get builder page URL
