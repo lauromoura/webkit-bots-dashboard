@@ -4,6 +4,7 @@ import { classifyByTier, findWPEReleaseTester, findGTKReleaseTester } from "../l
 import { renderPageHeader } from "../components/page-header.js";
 import { renderBuilderTable } from "../components/builder-table.js";
 import { renderTimeLimitTable } from "../components/time-limit-table.js";
+import { lazyDetails } from "../components/lazy-details.js";
 import { el } from "../components/_dom.js";
 
 const TIER_SECTIONS = [
@@ -14,6 +15,9 @@ const TIER_SECTIONS = [
     { key: "jsconly", title: "JSCOnly Linux bots" },
     { key: "retired", title: "Retired builders (no active master)" },
 ];
+
+// Low-priority groups: collapsed by default and fetched only when opened.
+const LAZY_KEYS = new Set(["tier5", "jsconly", "retired"]);
 
 async function init() {
     const app = document.getElementById("app");
@@ -29,16 +33,16 @@ async function init() {
 
     const tiers = classifyByTier(builders);
 
-    // Tier 1, 2, 4, 5 — standard builder tables; retired in collapsed <details>
+    // Tier 1/2/4 render eagerly (priority — always visible). Tier 5, JSCOnly and
+    // Retired are collapsed by default and fetch their bots only when expanded.
     for (const { key, title } of TIER_SECTIONS) {
-        if (key === "retired") {
-            if (tiers.retired.length === 0)
-                continue;
-            const details = el("details", { id: key }, [
-                el("summary", null, [el("h2", { style: "display:inline" }, [title])]),
-                renderBuilderTable(tiers[key]),
-            ]);
-            app.appendChild(details);
+        if (LAZY_KEYS.has(key)) {
+            app.appendChild(lazyDetails({
+                id: key,
+                title,
+                count: tiers[key].length,
+                build: (onLoaded) => renderBuilderTable(tiers[key], onLoaded),
+            }));
         } else {
             const section = el("div", { id: key }, [
                 el("h2", null, [title]),

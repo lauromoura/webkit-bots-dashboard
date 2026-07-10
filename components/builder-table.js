@@ -16,9 +16,11 @@ const HEADER_LABELS = [
  * rows populate progressively as build data arrives.
  *
  * @param {Array<Object>} builders
+ * @param {function():void} [onLoaded] - called once all per-builder fetches
+ *     have settled (success or failure); used to clear a pending indicator.
  * @returns {HTMLTableElement}
  */
-export function renderBuilderTable(builders) {
+export function renderBuilderTable(builders, onLoaded) {
     const headerCells = HEADER_LABELS.map(label => el("th", null, [label]));
     // Force numeric sorting on columns with data-sort numeric values
     headerCells[1].setAttribute("data-sort-method", "number"); // Current build
@@ -41,6 +43,9 @@ export function renderBuilderTable(builders) {
         new Tablesort(table);
     }).catch(err => {
         console.error("Failed to load builder data:", err);
+    }).finally(() => {
+        if (onLoaded)
+            onLoaded();
     });
 
     return table;

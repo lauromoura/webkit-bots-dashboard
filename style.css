@@ -91,6 +91,25 @@ nav {
     background-color: #555;
 }
 
+/* Lazy-loaded collapsible groups (tiered page) */
+
+details > summary {
+    cursor: pointer;
+}
+
+.lazy-status {
+    font-size: 11px;
+    color: #777;
+    font-style: italic;
+    margin-left: 6px;
+}
+
+.lazy-empty {
+    color: #777;
+    font-style: italic;
+    margin: 8px 0;
+}
+
 /* Build history table (builder detail page) */
 
 .build-history thead {
