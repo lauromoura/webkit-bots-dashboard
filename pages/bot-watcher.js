@@ -4,6 +4,7 @@ import { classifyByPriority, findWPEReleaseTester, findGTKReleaseTester } from "
 import { renderPageHeader } from "../components/page-header.js";
 import { renderBuilderTable } from "../components/builder-table.js";
 import { renderTimeLimitTable } from "../components/time-limit-table.js";
+import { lazyDetails } from "../components/lazy-details.js";
 import { el } from "../components/_dom.js";
 
 const PRIORITY_SECTIONS = [
@@ -15,6 +16,9 @@ const PRIORITY_SECTIONS = [
     { key: "jsconly", title: "JSCOnly Linux bots" },
     { key: "retired", title: "Retired builders (no active master)" },
 ];
+
+// Low-priority groups: collapsed by default and fetched only when opened.
+const LAZY_KEYS = new Set(["other", "jsconly", "retired"]);
 
 async function init() {
     const app = document.getElementById("app");
@@ -32,15 +36,16 @@ async function init() {
 
     const priorities = classifyByPriority(builders);
 
+    // P1/P2/P3/P5 render eagerly (priority — always visible). Other, JSCOnly and
+    // Retired are collapsed by default and fetch their bots only when expanded.
     for (const { key, title } of PRIORITY_SECTIONS) {
-        if (key === "retired") {
-            if (priorities.retired.length === 0)
-                continue;
-            const details = el("details", { id: key }, [
-                el("summary", null, [el("h2", { style: "display:inline" }, [title])]),
-                renderBuilderTable(priorities[key]),
-            ]);
-            app.appendChild(details);
+        if (LAZY_KEYS.has(key)) {
+            app.appendChild(lazyDetails({
+                id: key,
+                title,
+                count: priorities[key].length,
+                build: (onLoaded) => renderBuilderTable(priorities[key], onLoaded),
+            }));
         } else {
             const section = el("div", { id: key }, [
                 el("h2", null, [title]),
