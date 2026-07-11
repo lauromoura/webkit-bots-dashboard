@@ -9,7 +9,7 @@ import { el } from "../components/_dom.js";
 const PRIORITY_SECTIONS = [
     { key: "p1", title: "Priority 1 - Release build bots - Must be green" },
     { key: "p2", title: "Priority 2 - Release test bots - Must not exit early" },
-    { key: "p3", title: "Priority 3 - Debug build bots - Must be green" },
+    { key: "p3", title: "Priority 3 - Debug test bots - Must build" },
     { key: "p5", title: "Priority 5 - Stable/LTS release bots - Must be green" },
     { key: "other", title: "Priority 6 - Other bots" },
     { key: "jsconly", title: "JSCOnly Linux bots" },
@@ -66,10 +66,11 @@ async function init() {
         p4Children.push(renderTimeLimitTable(gtkBot));
     }
 
-    // Insert Priority 4 after Priority 2
-    const p2Section = document.getElementById("p2");
+    // Insert Priority 4 after Priority 3 (Debug), so the on-screen order matches
+    // the priority table: P1, P2, P3, P4, P5, P6.
+    const p3Section = document.getElementById("p3");
     const p4Section = el("div", { id: "p4" }, p4Children);
-    p2Section.after(p4Section);
+    p3Section.after(p4Section);
 }
 
 startAutoRefresh();
