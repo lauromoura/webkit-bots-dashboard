@@ -4,6 +4,7 @@ import { isRelevantPlatform, isRetired } from "../lib/builders.js";
 import { renderPageHeader } from "../components/page-header.js";
 import { renderBuilderTable } from "../components/builder-table.js";
 import { renderEWSBuilderTable } from "../components/ews-builder-table.js";
+import { lazyDetails } from "../components/lazy-details.js";
 import { el } from "../components/_dom.js";
 
 // ── Bot name lists (matched by name, not ID) ──
@@ -161,20 +162,21 @@ async function init() {
         isRelevantPlatform(b) && isRetired(b) && !ALL_NAMED_POSTCOMMIT.has(b.name)
     );
 
-    const section4 = el("div", { id: "other-bots" }, [
-        el("h2", null, ["Other post-commit bots"]),
-        renderBuilderTable(otherBuilders),
-    ]);
+    // Both are low-priority: collapsed by default and fetched only when opened.
+    // Sections 1-2 (the bots actually being gardened) stay eager and visible.
+    app.appendChild(lazyDetails({
+        id: "other-bots",
+        title: "Other post-commit bots",
+        count: otherBuilders.length,
+        build: (onLoaded) => renderBuilderTable(otherBuilders, onLoaded),
+    }));
 
-    if (retiredBuilders.length > 0) {
-        section4.appendChild(el("details", null, [
-            el("summary", null, [el("h3", { style: "display:inline" },
-                ["Retired builders (no active master)"])]),
-            renderBuilderTable(retiredBuilders),
-        ]));
-    }
-
-    app.appendChild(section4);
+    app.appendChild(lazyDetails({
+        id: "retired",
+        title: "Retired builders (no active master)",
+        count: retiredBuilders.length,
+        build: (onLoaded) => renderBuilderTable(retiredBuilders, onLoaded),
+    }));
 }
 
 startAutoRefresh();
