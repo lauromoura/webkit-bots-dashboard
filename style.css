@@ -110,6 +110,13 @@ details > summary {
     margin: 8px 0;
 }
 
+/* Why a job is red: build step vs test step (see lib/steps.js) */
+
+.step-note {
+    font-style: italic;
+    opacity: 0.75;
+}
+
 /* Build history table (builder detail page) */
 
 .build-history thead {

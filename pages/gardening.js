@@ -119,7 +119,8 @@ async function init() {
     const mainBuilders = filterByNames(postCommitBuilders, MAIN_BUILDER_NAMES);
     warnMissing("post-commit build", postCommitBuilders, MAIN_BUILDER_NAMES);
     section1.appendChild(el("h3", null, ["Post-commit \u2014 Release must be green. Debug must not fail build step."]));
-    section1.appendChild(renderBuilderTable(mainBuilders));
+    // Step-aware: a red debug job that only failed layout-test still compiled.
+    section1.appendChild(renderBuilderTable(mainBuilders, undefined, { stepAware: true }));
 
     // EWS builders
     const ewsBuildBots = filterByNames(ewsBuilders, EWS_BUILDER_NAMES);

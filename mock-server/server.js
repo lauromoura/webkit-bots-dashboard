@@ -18,6 +18,7 @@ const {
     generateEWSWorkers, generateEWSBuildRequests,
     queryBuildRequests,
     assignWorkerIds,
+    generateSteps,
 } = require("./data.js");
 
 // Parse CLI arguments
@@ -65,7 +66,20 @@ const MIME_TYPES = {
 // Project root is the parent of mock-server/
 const STATIC_ROOT = path.resolve(__dirname, "..");
 
+// buildid -> build, so /builds/{buildid}/steps can be answered directly
+function indexByBuildId(map) {
+    const index = new Map();
+    for (const builds of map.values()) {
+        for (const build of builds)
+            index.set(build.buildid, build);
+    }
+    return index;
+}
+const buildById = indexByBuildId(buildsMap);
+const ewsBuildById = indexByBuildId(ewsBuildsMap);
+
 // Route patterns — post-commit (build.webkit.org)
+const BUILD_STEPS = /^\/api\/v2\/builds\/(\d+)\/steps\/?$/;
 const BUILDERS_LIST = /^\/api\/v2\/builders\/?$/;
 const BUILDER_BY_ID = /^\/api\/v2\/builders\/(\d+)\/?$/;
 const BUILDER_BUILDS = /^\/api\/v2\/builders\/(\d+)\/builds\/?$/;
@@ -73,6 +87,7 @@ const BUILD_REQUESTS = /^\/api\/v2\/buildrequests\/?$/;
 const WORKERS_LIST = /^\/api\/v2\/workers\/?$/;
 
 // Route patterns — EWS (ews-build.webkit.org)
+const EWS_BUILD_STEPS = /^\/ews\/api\/v2\/builds\/(\d+)\/steps\/?$/;
 const EWS_BUILDERS_LIST = /^\/ews\/api\/v2\/builders\/?$/;
 const EWS_BUILDER_BY_ID = /^\/ews\/api\/v2\/builders\/(\d+)\/?$/;
 const EWS_BUILDER_BUILDS = /^\/ews\/api\/v2\/builders\/(\d+)\/builds\/?$/;
@@ -88,6 +103,13 @@ const server = http.createServer((req, res) => {
     let match;
 
     // --- Post-commit API routes ---
+
+    if ((match = pathname.match(BUILD_STEPS))) {
+        const build = buildById.get(parseInt(match[1], 10));
+        const steps = build ? generateSteps(build) : [];
+        sendJSON(res, { steps, meta: { total: steps.length } });
+        return;
+    }
 
     if ((match = pathname.match(BUILD_REQUESTS))) {
         const response = queryBuildRequests(buildRequestsData, params);
@@ -134,6 +156,13 @@ const server = http.createServer((req, res) => {
     }
 
     // --- EWS API routes ---
+
+    if ((match = pathname.match(EWS_BUILD_STEPS))) {
+        const build = ewsBuildById.get(parseInt(match[1], 10));
+        const steps = build ? generateSteps(build) : [];
+        sendJSON(res, { steps, meta: { total: steps.length } });
+        return;
+    }
 
     if ((match = pathname.match(EWS_BUILD_REQUESTS))) {
         const response = queryBuildRequests(ewsBuildRequestsData, params);

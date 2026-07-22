@@ -697,10 +697,47 @@ function assignWorkerIds(buildsMap, workers) {
     }
 }
 
+// Steps for a build. Mirrors enough of the real API to exercise the build-step
+// vs test-step distinction (see lib/steps.js): a failed job whose compile-webkit
+// succeeded is a test-only failure, not a broken build.
+function generateSteps(build) {
+    const ok = (number, name, state) => ({ number, name, results: 0, state_string: state });
+    const steps = [
+        ok(0, "worker_preparation", "worker ready"),
+        ok(1, "configure-build", "configured build"),
+        ok(2, "clean-and-update-working-directory", "cleaned and updated working directory"),
+        ok(3, "jhbuild", "updated dependencies"),
+    ];
+
+    if (!build.complete) {
+        steps.push(ok(4, "compile-webkit", "compiled"));
+        steps.push({ number: 5, name: "layout-test", results: null, state_string: "layout-tests running" });
+        return steps;
+    }
+
+    if (build.results === 0) {
+        steps.push(ok(4, "compile-webkit", "compiled"));
+        steps.push(ok(5, "layout-test", "layout-tests passed"));
+        return steps;
+    }
+
+    // Failed job: alternate deterministically between a genuine build break and a
+    // test-only failure, so both cases are reachable offline.
+    if (build.buildid % 3 === 0) {
+        steps.push({ number: 4, name: "compile-webkit", results: 2, state_string: "failed compile-webkit" });
+        steps.push({ number: 5, name: "layout-test", results: 3, state_string: "skipped" });
+    } else {
+        steps.push(ok(4, "compile-webkit", "compiled"));
+        steps.push({ number: 5, name: "layout-test", results: 2, state_string: "8 failures 2 timeouts" });
+    }
+    return steps;
+}
+
 module.exports = {
     BUILDERS,
     EWS_BUILDERS,
     generateBuilds,
+    generateSteps,
     generateEWSBuilds,
     queryBuilds,
     generateWorkers,
