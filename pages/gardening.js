@@ -9,12 +9,16 @@ import { el } from "../components/_dom.js";
 
 // ── Bot name lists (matched by name, not ID) ──
 
+// "The build is not broken on ..." from the gardening agreement. Debug bots now
+// combine building and running tests in a single *-Debug-Tests bot; the old
+// *-Debug-Build bots are retired.
 const MAIN_BUILDER_NAMES = [
     "WPE-Linux-64-bit-Release-Build",
-    "WPE-Linux-64-bit-Debug-Build",
+    "WPE-Linux-64-bit-Release-Non-Unified-Build",
+    "WPE-Linux-64-bit-Debug-Tests",
     "WPE-Linux-ARM64-bit-Release-Build",
     "GTK-Linux-64-bit-Release-Build",
-    "GTK-Linux-64-bit-Debug-Build",
+    "GTK-Linux-64-bit-Debug-Tests",
 ];
 
 const MAIN_TESTER_NAMES = [
@@ -24,6 +28,11 @@ const MAIN_TESTER_NAMES = [
     "WPE-Linux-ARM64-bit-Release-JS-Tests",
     "GTK-Linux-64-bit-Release-Tests",
     "GTK-Linux-64-bit-Release-JS-Tests",
+];
+
+// Bot testing the stable branch — checked for new regressions, not for green.
+const STABLE_BRANCH_NAMES = [
+    "WPE-Linux-ARM64-bit-Release-v252-BuildAndTest",
 ];
 
 const EWS_BUILDER_NAMES = [
@@ -54,7 +63,9 @@ const TESTER_GROUPS = [
     },
 ];
 
-const ALL_NAMED_POSTCOMMIT = new Set([...MAIN_BUILDER_NAMES, ...MAIN_TESTER_NAMES]);
+const ALL_NAMED_POSTCOMMIT = new Set([
+    ...MAIN_BUILDER_NAMES, ...MAIN_TESTER_NAMES, ...STABLE_BRANCH_NAMES,
+]);
 
 // ── Helpers ──
 
@@ -154,7 +165,17 @@ async function init() {
     ]);
     app.appendChild(section3);
 
-    // ── Section 4: Other Post-Commit Bots ──
+    // ── Section 4: Stable Branch ──
+    const stableBuilders = filterByNames(postCommitBuilders, STABLE_BRANCH_NAMES);
+    warnMissing("stable branch", postCommitBuilders, STABLE_BRANCH_NAMES);
+
+    const section4 = el("div", { id: "stable-branch" }, [
+        el("h2", null, ["Stable branch — No new regressions"]),
+        renderBuilderTable(stableBuilders),
+    ]);
+    app.appendChild(section4);
+
+    // ── Section 5: Other Post-Commit Bots ──
     const otherBuilders = postCommitBuilders.filter(b =>
         isRelevantPlatform(b) && !isRetired(b) && !ALL_NAMED_POSTCOMMIT.has(b.name)
     );
