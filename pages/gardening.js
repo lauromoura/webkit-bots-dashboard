@@ -137,10 +137,12 @@ async function init() {
 
     warnMissing("post-commit test", postCommitBuilders, MAIN_TESTER_NAMES);
 
+    // Step-aware too: on a test bot it separates an infrastructure failure
+    // (e.g. download-built-product) from the test failures being gardened here.
     for (const group of TESTER_GROUPS) {
         const testers = filterByNames(postCommitBuilders, group.names);
         section2.appendChild(el("h3", null, [group.label]));
-        section2.appendChild(renderBuilderTable(testers));
+        section2.appendChild(renderBuilderTable(testers, undefined, { stepAware: true }));
     }
 
     // EWS testers
@@ -172,7 +174,7 @@ async function init() {
 
     const section4 = el("div", { id: "stable-branch" }, [
         el("h2", null, ["Stable branch — No new regressions"]),
-        renderBuilderTable(stableBuilders),
+        renderBuilderTable(stableBuilders, undefined, { stepAware: true }),
     ]);
     app.appendChild(section4);
 

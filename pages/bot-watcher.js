@@ -20,9 +20,10 @@ const PRIORITY_SECTIONS = [
 // Low-priority groups: collapsed by default and fetched only when opened.
 const LAZY_KEYS = new Set(["other", "jsconly", "retired"]);
 
-// Debug bots build and test in one job, so a red job may still have compiled.
-// P3's criterion is "must build", so judge it by its build steps (lib/steps.js).
-const STEP_AWARE_KEYS = new Set(["p3"]);
+// All eager sections are step-aware: a red job is annotated with which step
+// actually broke (lib/steps.js). It is what distinguishes a broken build from
+// test breakage on the debug bots, and elsewhere it still says whether the
+// failure was a build/infra step or the tests themselves.
 
 async function init() {
     const app = document.getElementById("app");
@@ -53,8 +54,7 @@ async function init() {
         } else {
             const section = el("div", { id: key }, [
                 el("h2", null, [title]),
-                renderBuilderTable(priorities[key], undefined,
-                    { stepAware: STEP_AWARE_KEYS.has(key) }),
+                renderBuilderTable(priorities[key], undefined, { stepAware: true }),
             ]);
             app.appendChild(section);
         }
