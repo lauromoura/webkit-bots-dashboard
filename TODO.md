@@ -25,7 +25,7 @@
 - [ ] Distinguish more build result types visually (WARNINGS, EXCEPTION, RETRY, CANCELLED — currently only SUCCESS vs FAILURE get colors)
 - [x] Add breadcrumb / smarter "back" navigation on builder detail (referrer-aware, links back to originating page)
 - [ ] Add build status filtering on builder detail page
-- [ ] Add search/filter capability on the tiered view
+- [ ] Add search/filter capability on the main dashboard (`index.html` / Bot Watcher)
 - [ ] Pagination or "load more" for builder detail (currently hard-capped at 100 builds)
 - [ ] Live-update relative timestamps between page refreshes (a small `setInterval`)
 
@@ -38,9 +38,9 @@
 
 ## Data & reliability
 
-- [ ] API retry with backoff on transient failures (currently a single failed fetch shows a static error until next auto-refresh, 2 min later)
+- [ ] API retry with backoff on transient failures (currently a single failed fetch shows a static error until next auto-refresh, 5 min later)
 - [ ] Add localStorage cache TTL/expiration (currently only invalidated when the latest build number changes — stale data could persist indefinitely)
-- [ ] Error indication per-builder row when an individual `getLastBuilds()` call fails on the tiered page
+- [ ] Error indication per-builder row when an individual `getLastBuilds()` call fails (`components/builder-table.js`, affects all dashboard pages)
 
 ## Queue status enhancements
 
@@ -52,7 +52,7 @@
 ## Code quality / DRY
 
 - [ ] **Deduplicate queue page utilities** — `groupByBuilderId()`, `groupWorkersByBuilderId()`, and the status legend are copy-pasted between `queue.js` and `ews-queue.js`; extract to shared modules
-- [ ] **Centralize configuration** — severity thresholds (`queue-row.js:5-7`), EWS name filters (`ews-queue.js:21`), tier section definitions (`queue.js:7-14` / `tiered.js:8-15`), and API base URLs are hardcoded in multiple places
+- [ ] **Centralize configuration** — severity thresholds (`queue-row.js:5-7`), EWS name filters (`ews-queue.js:21`), section definitions (`queue.js:8-15` / `bot-watcher.js:10-18`), and API base URLs are hardcoded in multiple places
 - [ ] **Consistent API factory pattern** — `builder.js:27` mixes `createAPI()` factory and named exports in `{ fetchAPI, getAllPendingRequests }`; pick one pattern
 - [ ] **Add SRI integrity hashes** to CDN `<script>` tags (Tablesort, Chart.js) in all HTML files
 - [ ] **Remove or consume unused `RESULT_CODES`** — `lib/api.js` defines WARNINGS/EXCEPTION/RETRY/CANCELLED but only SUCCESS and FAILURE are ever checked
