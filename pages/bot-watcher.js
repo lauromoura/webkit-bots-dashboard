@@ -20,6 +20,10 @@ const PRIORITY_SECTIONS = [
 // Low-priority groups: collapsed by default and fetched only when opened.
 const LAZY_KEYS = new Set(["other", "jsconly", "retired"]);
 
+// Debug bots build and test in one job, so a red job may still have compiled.
+// P3's criterion is "must build", so judge it by its build steps (lib/steps.js).
+const STEP_AWARE_KEYS = new Set(["p3"]);
+
 async function init() {
     const app = document.getElementById("app");
     app.appendChild(renderPageHeader("Bot Watcher - Priority-based dashboard"));
@@ -49,7 +53,8 @@ async function init() {
         } else {
             const section = el("div", { id: key }, [
                 el("h2", null, [title]),
-                renderBuilderTable(priorities[key]),
+                renderBuilderTable(priorities[key], undefined,
+                    { stepAware: STEP_AWARE_KEYS.has(key) }),
             ]);
             app.appendChild(section);
         }
