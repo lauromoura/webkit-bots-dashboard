@@ -112,19 +112,19 @@ async function init() {
 
     // ── Section 1: Main Build Queues ──
     const section1 = el("div", { id: "build-bots" }, [
-        el("h2", null, ["Build Bots \u2014 Must be green"]),
+        el("h2", null, ["Build Bots"]),
     ]);
 
     // Post-commit builders
     const mainBuilders = filterByNames(postCommitBuilders, MAIN_BUILDER_NAMES);
     warnMissing("post-commit build", postCommitBuilders, MAIN_BUILDER_NAMES);
-    section1.appendChild(el("h3", null, ["Post-commit"]));
+    section1.appendChild(el("h3", null, ["Post-commit \u2014 Release must be green. Debug must not fail build step."]));
     section1.appendChild(renderBuilderTable(mainBuilders));
 
     // EWS builders
     const ewsBuildBots = filterByNames(ewsBuilders, EWS_BUILDER_NAMES);
     warnMissing("EWS build", ewsBuilders, EWS_BUILDER_NAMES);
-    section1.appendChild(el("h3", null, ["EWS"]));
+    section1.appendChild(el("h3", null, ["EWS \u2014 must not fail to build without patch."]));
     section1.appendChild(renderEWSBuilderTable(ewsBuildBots, ewsAPI));
 
     app.appendChild(section1);
