@@ -9,6 +9,12 @@ import { el } from "../components/_dom.js";
 
 // ── Bot name lists (matched by name, not ID) ──
 
+// Highest-priority bot: WPE ARM64 v254 BuildAndTest. Rendered first, above the
+// build bots.
+const TOP_PRIORITY_NAMES = [
+    "WPE-Linux-ARM64-bit-Release-v254-BuildAndTest",
+];
+
 // "The build is not broken on ..." from the gardening agreement. Debug bots now
 // combine building and running tests in a single *-Debug-Tests bot; the old
 // *-Debug-Build bots are retired.
@@ -64,7 +70,8 @@ const TESTER_GROUPS = [
 ];
 
 const ALL_NAMED_POSTCOMMIT = new Set([
-    ...MAIN_BUILDER_NAMES, ...MAIN_TESTER_NAMES, ...STABLE_BRANCH_NAMES,
+    ...TOP_PRIORITY_NAMES, ...MAIN_BUILDER_NAMES, ...MAIN_TESTER_NAMES,
+    ...STABLE_BRANCH_NAMES,
 ]);
 
 // ── Helpers ──
@@ -109,6 +116,16 @@ async function init() {
         app.appendChild(el("p", null, ["Failed to fetch EWS builders."]));
         return;
     }
+
+    // ── Highest priority: WPE ARM64 v254 (BuildAndTest) ──
+    const topBuilders = filterByNames(postCommitBuilders, TOP_PRIORITY_NAMES);
+    warnMissing("top priority", postCommitBuilders, TOP_PRIORITY_NAMES);
+    const topSection = el("div", { id: "top-priority" }, [
+        el("h2", null, ["WPE ARM64 v254 — Highest priority, must be green"]),
+        // Step-aware: BuildAndTest bot, so annotate whether a red job broke the build.
+        renderBuilderTable(topBuilders, undefined, { stepAware: true }),
+    ]);
+    app.appendChild(topSection);
 
     // ── Section 1: Main Build Queues ──
     const section1 = el("div", { id: "build-bots" }, [
