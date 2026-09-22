@@ -12,6 +12,9 @@ const isLocal = location.hostname === "localhost" || location.hostname === "127.
 const EWS_BASE_URL = isLocal ? "/ews/api/v2/" : "https://ews-build.webkit.org/api/v2/";
 const EWS_BUILDBOT_BASE = "https://ews-build.webkit.org/";
 
+const ALLOWED_COUNTS = [25, 50, 100, 200];
+const DEFAULT_COUNT = 100;
+
 function formatDateStr(date) {
     const yyyy = date.getFullYear();
     const mm = String(date.getMonth() + 1).padStart(2, "0");
@@ -130,6 +133,43 @@ function renderDailySummarySection(dates, days, ews = false) {
     ]);
 }
 
+// Count dropdown shown next to the Build history heading. On change it navigates
+// to the same builder at the new page size, resetting to page 1 (the old offset
+// is meaningless at a different page size).
+function renderCountSelector(count, buildHistoryHref) {
+    const select = el("select", { id: "buildCount", className: "build-count-select" },
+        ALLOWED_COUNTS.map(n => {
+            const opt = el("option", { value: String(n), textContent: String(n) });
+            if (n === count) opt.selected = true;
+            return opt;
+        }));
+    select.addEventListener("change", () => {
+        location.search = buildHistoryHref(parseInt(select.value, 10), 1);
+    });
+    return el("label", { className: "build-history-controls" }, ["Show ", select, " jobs"]);
+}
+
+// Prev/next controls + status line rendered below the table. Bounds render as
+// disabled spans rather than links.
+function renderPagination({ count, page, total, shown, buildHistoryHref }) {
+    const totalPages = Math.max(1, Math.ceil(total / count));
+    const first = total === 0 ? 0 : (page - 1) * count + 1;
+    const last = (page - 1) * count + shown;
+
+    const prev = page > 1
+        ? el("a", { href: buildHistoryHref(count, page - 1) }, ["‹ Prev"])
+        : el("span", { className: "pagination-disabled" }, ["‹ Prev"]);
+    const next = page < totalPages
+        ? el("a", { href: buildHistoryHref(count, page + 1) }, ["Next ›"])
+        : el("span", { className: "pagination-disabled" }, ["Next ›"]);
+
+    const status = el("span", { className: "pagination-status" }, [
+        `Page ${page} of ${totalPages} — showing ${first}-${last} of ${total}`,
+    ]);
+
+    return el("nav", { className: "build-history-pagination" }, [prev, status, next]);
+}
+
 async function init() {
     const app = document.getElementById("app");
 
@@ -143,6 +183,23 @@ async function init() {
         app.appendChild(el("p", null, ["No builder ID specified."]));
         return;
     }
+
+    // Build-history paging state, driven entirely off the URL so it survives the
+    // 5-minute auto-refresh (which does a full location.reload()).
+    const rawCount = parseInt(params.get("count"), 10);
+    const count = ALLOWED_COUNTS.includes(rawCount) ? rawCount : DEFAULT_COUNT;
+    const page = Math.max(1, parseInt(params.get("page"), 10) || 1);
+    const offset = (page - 1) * count;
+
+    // Preserve the correct id param (builder vs ews-builder) when building
+    // paging links.
+    const buildHistoryHref = (newCount, newPage) => {
+        const p = new URLSearchParams();
+        p.set(isEWS ? "ews-builder" : "builder", builderId);
+        p.set("count", String(newCount));
+        p.set("page", String(newPage));
+        return `?${p.toString()}`;
+    };
 
     // Select API and buildbot base URL based on mode
     const api = isEWS ? createAPI(EWS_BASE_URL) : { fetchAPI, getAllPendingRequests, getAllWorkers };
@@ -173,7 +230,7 @@ async function init() {
     const digestPromise = fetchBuilderDailySummary(builderId, { ews: isEWS });
     const [requestsData, buildsData, allWorkers, digestResult] = await Promise.all([
         api.getAllPendingRequests(),
-        api.fetchAPI(`builders/${builderId}/builds?limit=100&order=-number&property=identifier`),
+        api.fetchAPI(`builders/${builderId}/builds?limit=${count}&offset=${offset}&order=-number&property=identifier`),
         api.getAllWorkers(),
         digestPromise,
     ]);
@@ -294,12 +351,32 @@ async function init() {
         if (summarySection) app.appendChild(summarySection);
     }
 
-    if (!buildsData?.builds?.length) {
-        app.appendChild(el("p", null, ["No builds found."]));
+    const builds = buildsData?.builds || [];
+    // build.webkit.org's meta.total just echoes the page size, not the builder's
+    // total build count. Buildbot numbers builds sequentially per builder from 1
+    // with no gaps, and builds here are newest-first (order=-number), so the
+    // newest number on this page plus the offset gives the real total.
+    const total = builds.length ? builds[0].number + offset : offset;
+    const heading = el("div", { className: "build-history-header" }, [
+        el("h3", null, ["Build history"]),
+        renderCountSelector(count, buildHistoryHref),
+    ]);
+
+    if (!builds.length) {
+        // Distinguish an empty builder from paging past the last page.
+        const emptyMsg = page > 1
+            ? el("p", null, [
+                "No builds on this page. ",
+                el("a", { href: buildHistoryHref(count, 1) }, ["Back to first page"]),
+                ".",
+            ])
+            : el("p", null, ["No builds found."]);
+        app.appendChild(el("section", null, [heading, emptyMsg]));
     } else {
         app.appendChild(el("section", null, [
-            el("h3", null, ["Build history"]),
-            renderBuildHistoryTable(parseInt(builderId, 10), buildsData.builds, { buildbotBase, workerNames }),
+            heading,
+            renderBuildHistoryTable(parseInt(builderId, 10), builds, { buildbotBase, workerNames }),
+            renderPagination({ count, page, total, shown: builds.length, buildHistoryHref }),
         ]));
     }
 

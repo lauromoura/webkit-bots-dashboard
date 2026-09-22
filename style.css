@@ -119,6 +119,44 @@ details > summary {
 
 /* Build history table (builder detail page) */
 
+/* Heading row: "Build history" title + count selector */
+.build-history-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.build-history-header h3 {
+    margin: 0;
+}
+
+.build-history-controls {
+    font-weight: normal;
+}
+
+.build-count-select {
+    margin: 0 4px;
+}
+
+/* Prev/next pagination below the table */
+.build-history-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 8px;
+}
+
+.build-history-pagination .pagination-disabled {
+    color: #999;
+}
+
+.build-history-pagination .pagination-status {
+    color: #666;
+}
+
 .build-history thead {
     font-weight: bold;
 }
