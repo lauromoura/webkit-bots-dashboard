@@ -3,6 +3,7 @@ import { fetchAPI, createAPI } from "../lib/api.js";
 import { builderPageURL } from "../lib/urls.js";
 import { renderPageHeader } from "../components/page-header.js";
 import { renderBuildHistoryTable } from "../components/build-history-table.js";
+import { readPagingParams, renderCountSelector, renderPagination } from "../components/build-history-pagination.js";
 import { classifyWorker } from "../components/queue-row.js";
 import { el } from "../components/_dom.js";
 
@@ -23,6 +24,18 @@ async function init() {
         app.appendChild(el("p", null, ["No worker ID specified."]));
         return;
     }
+
+    // Build-history paging state, driven off the URL so it survives auto-refresh.
+    const { count, page, offset } = readPagingParams(params);
+
+    // Preserve the correct id param (worker vs ews-worker) when building paging links.
+    const buildHistoryHref = (newCount, newPage) => {
+        const p = new URLSearchParams();
+        p.set(isEWS ? "ews-worker" : "worker", workerId);
+        p.set("count", String(newCount));
+        p.set("page", String(newPage));
+        return `?${p.toString()}`;
+    };
 
     const api = isEWS ? createAPI(EWS_BASE_URL) : { fetchAPI };
     const buildbotBase = isEWS ? EWS_BUILDBOT_BASE : undefined;
@@ -48,7 +61,7 @@ async function init() {
     if (builderId != null) {
         const [builderData, buildsResult] = await Promise.all([
             api.fetchAPI(`builders/${builderId}`),
-            api.fetchAPI(`builders/${builderId}/builds?workerid=${workerId}&limit=100&order=-number&property=identifier`),
+            api.fetchAPI(`builders/${builderId}/builds?workerid=${workerId}&limit=${count}&offset=${offset}&order=-number&property=identifier`),
         ]);
         builderName = builderData?.builders?.[0]?.name;
         buildsData = buildsResult;
@@ -97,13 +110,33 @@ async function init() {
 
     // Build history
     const builds = buildsData?.builds || [];
+    // For post-commit bots each builder is effectively single-worker, so the
+    // worker-filtered build numbers are contiguous and total = newest + offset is
+    // exact. EWS builders run worker pools, so the filtered sequence has gaps and
+    // no reliable total exists — pass null there and let paging fall back to the
+    // "full page => maybe more" heuristic.
+    const total = isEWS ? null : (builds.length ? builds[0].number + offset : offset);
+    const heading = el("div", { className: "build-history-header" }, [
+        el("h3", null, ["Build history"]),
+        renderCountSelector(count, buildHistoryHref),
+    ]);
+
     if (builds.length === 0) {
-        app.appendChild(el("p", null, ["No builds found."]));
+        // Distinguish a worker with no builds from paging past the last page.
+        const emptyMsg = page > 1
+            ? el("p", null, [
+                "No builds on this page. ",
+                el("a", { href: buildHistoryHref(count, 1) }, ["Back to first page"]),
+                ".",
+            ])
+            : el("p", null, ["No builds found."]);
+        app.appendChild(el("section", null, [heading, emptyMsg]));
     } else {
         const histBuilderId = builderId != null ? parseInt(builderId, 10) : builds[0]?.builderid;
         app.appendChild(el("section", null, [
-            el("h3", null, ["Build history"]),
+            heading,
             renderBuildHistoryTable(histBuilderId, builds, { buildbotBase, hideWorkerColumn: true }),
+            renderPagination({ count, page, total, shown: builds.length, hrefFor: buildHistoryHref }),
         ]));
     }
 

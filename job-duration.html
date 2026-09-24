@@ -204,6 +204,18 @@
             <label>Current Builder:</label>
             <strong id="currentBuilder">WPE-Linux-64-bit-Release-Build</strong>
         </div>
+        <div class="control-group build-history-pagination">
+            <label for="jobCountSelect">Show jobs:</label>
+            <select id="jobCountSelect" class="build-count-select" onchange="changeJobCount()">
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+                <option value="200">200</option>
+            </select>
+            <button id="prevPageBtn" onclick="prevPage()">&lsaquo; Prev</button>
+            <span id="pageInfo" class="pagination-status"></span>
+            <button id="nextPageBtn" onclick="nextPage()">Next &rsaquo;</button>
+        </div>
         <div class="control-group">
             <label for="urlInput">Load from URL:</label>
             <input type="text" id="urlInput" placeholder="Enter JSON URL">
@@ -238,6 +250,10 @@
         // Global variable for current builder
         let currentBuilderName = 'WPE-Linux-64-bit-Release-Build';
 
+        // Paging state (in-memory; this page has no URL state and no auto-refresh).
+        let currentCount = 100;
+        let currentOffset = 0;
+
         // In local dev, hit the same-origin proxy (dev-proxy.py) instead of the
         // absolute URL, which the Buildbot CORS allow-list rejects from localhost.
         const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
@@ -245,7 +261,7 @@
 
         // Function to get API URL for current builder
         function getBuilderAPIUrl() {
-            return `${API_BASE}builders/${currentBuilderName}/builds?limit=100&order=-number&property=identifier`;
+            return `${API_BASE}builders/${currentBuilderName}/builds?limit=${currentCount}&offset=${currentOffset}&order=-number&property=identifier`;
         }
 
         // Function to get builder page URL
@@ -261,11 +277,16 @@
             // Reset dropdown selection
             document.getElementById('builderSelect').value = '';
 
-            // Update URL input
-            document.getElementById('urlInput').value = getBuilderAPIUrl();
+            // Switching builders starts a fresh view from the newest builds.
+            currentOffset = 0;
 
-            // Load data for the selected builder
-            showStatus(`Loading data for ${builderName}...`);
+            await reloadData();
+        }
+
+        // Re-fetch the current builder at the current count/offset and render.
+        async function reloadData() {
+            document.getElementById('urlInput').value = getBuilderAPIUrl();
+            showStatus(`Loading data for ${currentBuilderName}...`);
             const data = await loadData(getBuilderAPIUrl());
 
             if (data) {
@@ -274,6 +295,44 @@
                 document.getElementById('tableContainer').innerHTML = '<p>Failed to load data</p>';
                 showStatus('Failed to load data from BuildBot API. Check console for details.', true);
             }
+        }
+
+        // Count selector: change page size and restart from the newest builds.
+        function changeJobCount() {
+            currentCount = parseInt(document.getElementById('jobCountSelect').value, 10) || 100;
+            currentOffset = 0;
+            reloadData();
+        }
+
+        function prevPage() {
+            if (currentOffset <= 0) return;
+            currentOffset = Math.max(0, currentOffset - currentCount);
+            reloadData();
+        }
+
+        function nextPage() {
+            currentOffset += currentCount;
+            reloadData();
+        }
+
+        // Update the "Page X of N" line and enable/disable the prev/next buttons.
+        // Total is derived from the newest build number on the page plus the
+        // offset — reliable here because this is a single, unfiltered builder.
+        function updatePageInfo(builds) {
+            const pageInfo = document.getElementById('pageInfo');
+            const prevBtn = document.getElementById('prevPageBtn');
+            const nextBtn = document.getElementById('nextPageBtn');
+
+            const shown = builds ? builds.length : 0;
+            const total = shown ? builds[0].number + currentOffset : currentOffset;
+            const totalPages = Math.max(1, Math.ceil(total / currentCount));
+            const page = Math.floor(currentOffset / currentCount) + 1;
+            const first = total === 0 ? 0 : currentOffset + 1;
+            const last = currentOffset + shown;
+
+            pageInfo.textContent = `Page ${page} of ${totalPages} — showing ${first}-${last} of ${total}`;
+            prevBtn.disabled = currentOffset <= 0;
+            nextBtn.disabled = page >= totalPages;
         }
 
         // Function to handle dropdown selection
@@ -612,9 +671,11 @@
             if (data && data.builds && data.builds.length > 0) {
                 const builds = data.builds;
                 displayResults(builds);
+                updatePageInfo(builds);
                 showStatus(`Successfully loaded ${builds.length} builds`);
             } else {
                 document.getElementById('tableContainer').innerHTML = '<p>No data available</p>';
+                updatePageInfo([]);
                 showStatus('No builds found in the JSON', true);
             }
         }

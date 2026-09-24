@@ -4,6 +4,7 @@ import { buildbotBuilderURL, buildbotBuildRequestURL, workerPageURL } from "../l
 import { formatRelativeDateFromNow } from "../lib/format.js";
 import { renderPageHeader } from "../components/page-header.js";
 import { renderBuildHistoryTable } from "../components/build-history-table.js";
+import { readPagingParams, renderCountSelector, renderPagination } from "../components/build-history-pagination.js";
 import { classifyWorker } from "../components/queue-row.js";
 import { el } from "../components/_dom.js";
 import { computeMetrics, computeEWSMetrics, formatPercent, formatDuration } from "./_digest-utils.js";
@@ -11,9 +12,6 @@ import { computeMetrics, computeEWSMetrics, formatPercent, formatDuration } from
 const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
 const EWS_BASE_URL = isLocal ? "/ews/api/v2/" : "https://ews-build.webkit.org/api/v2/";
 const EWS_BUILDBOT_BASE = "https://ews-build.webkit.org/";
-
-const ALLOWED_COUNTS = [25, 50, 100, 200];
-const DEFAULT_COUNT = 100;
 
 function formatDateStr(date) {
     const yyyy = date.getFullYear();
@@ -133,43 +131,6 @@ function renderDailySummarySection(dates, days, ews = false) {
     ]);
 }
 
-// Count dropdown shown next to the Build history heading. On change it navigates
-// to the same builder at the new page size, resetting to page 1 (the old offset
-// is meaningless at a different page size).
-function renderCountSelector(count, buildHistoryHref) {
-    const select = el("select", { id: "buildCount", className: "build-count-select" },
-        ALLOWED_COUNTS.map(n => {
-            const opt = el("option", { value: String(n), textContent: String(n) });
-            if (n === count) opt.selected = true;
-            return opt;
-        }));
-    select.addEventListener("change", () => {
-        location.search = buildHistoryHref(parseInt(select.value, 10), 1);
-    });
-    return el("label", { className: "build-history-controls" }, ["Show ", select, " jobs"]);
-}
-
-// Prev/next controls + status line rendered below the table. Bounds render as
-// disabled spans rather than links.
-function renderPagination({ count, page, total, shown, buildHistoryHref }) {
-    const totalPages = Math.max(1, Math.ceil(total / count));
-    const first = total === 0 ? 0 : (page - 1) * count + 1;
-    const last = (page - 1) * count + shown;
-
-    const prev = page > 1
-        ? el("a", { href: buildHistoryHref(count, page - 1) }, ["‹ Prev"])
-        : el("span", { className: "pagination-disabled" }, ["‹ Prev"]);
-    const next = page < totalPages
-        ? el("a", { href: buildHistoryHref(count, page + 1) }, ["Next ›"])
-        : el("span", { className: "pagination-disabled" }, ["Next ›"]);
-
-    const status = el("span", { className: "pagination-status" }, [
-        `Page ${page} of ${totalPages} — showing ${first}-${last} of ${total}`,
-    ]);
-
-    return el("nav", { className: "build-history-pagination" }, [prev, status, next]);
-}
-
 async function init() {
     const app = document.getElementById("app");
 
@@ -186,10 +147,7 @@ async function init() {
 
     // Build-history paging state, driven entirely off the URL so it survives the
     // 5-minute auto-refresh (which does a full location.reload()).
-    const rawCount = parseInt(params.get("count"), 10);
-    const count = ALLOWED_COUNTS.includes(rawCount) ? rawCount : DEFAULT_COUNT;
-    const page = Math.max(1, parseInt(params.get("page"), 10) || 1);
-    const offset = (page - 1) * count;
+    const { count, page, offset } = readPagingParams(params);
 
     // Preserve the correct id param (builder vs ews-builder) when building
     // paging links.
@@ -376,7 +334,7 @@ async function init() {
         app.appendChild(el("section", null, [
             heading,
             renderBuildHistoryTable(parseInt(builderId, 10), builds, { buildbotBase, workerNames }),
-            renderPagination({ count, page, total, shown: builds.length, buildHistoryHref }),
+            renderPagination({ count, page, total, shown: builds.length, hrefFor: buildHistoryHref }),
         ]));
     }
 
