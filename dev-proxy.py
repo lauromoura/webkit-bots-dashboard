@@ -32,6 +32,9 @@ Record / replay
   --record DIR   proxy live as usual and also save every 200 response under DIR
   --replay DIR   never touch the network; answer only from fixtures in DIR
                  (a missing fixture is a 504 and is logged)
+  --replay DIR --fill-missing
+                 like --replay, but fetch and record calls with no fixture yet
+                 (e.g. after a code change adds a new API query)
 Record once, then iterate offline with --replay: realistic data, zero load on
 Buildbot, and deterministic output for screenshot/DOM tests.
 
@@ -145,11 +148,12 @@ def load_fixture(root, key):
 
 class UpstreamClient:
     def __init__(self, cache_ttl, max_inflight, min_interval,
-                 record_dir=None, replay_dir=None):
+                 record_dir=None, replay_dir=None, fill_missing=False):
         self.cache_ttl = cache_ttl
         self.min_interval = min_interval
         self.record_dir = record_dir
         self.replay_dir = replay_dir
+        self.fill_missing = fill_missing
         self.stats = Counter()
 
         self._cache = {}            # key -> (expires_at, Upstream)
@@ -203,7 +207,8 @@ class UpstreamClient:
         if self.replay_dir:
             resp = load_fixture(self.replay_dir, key)
             self.stats["replay_hits" if resp else "replay_misses"] += 1
-            return resp
+            if resp or not self.fill_missing:
+                return resp
 
         with self._key_lock(key):
             # Re-check inside the per-key lock: a concurrent request for the same
@@ -217,8 +222,9 @@ class UpstreamClient:
                 if self.cache_ttl > 0:
                     with self._lock:
                         self._cache[key] = (time.monotonic() + self.cache_ttl, resp)
-                if self.record_dir:
-                    save_fixture(self.record_dir, key, resp)
+                record_dir = self.record_dir or (self.fill_missing and self.replay_dir)
+                if record_dir:
+                    save_fixture(record_dir, key, resp)
                     self.stats["recorded"] += 1
             return resp
 
@@ -318,10 +324,15 @@ def main():
                       help="also save every successful response as a fixture in DIR")
     mode.add_argument("--replay", metavar="DIR",
                       help="serve API calls only from fixtures in DIR (no network)")
+    parser.add_argument("--fill-missing", action="store_true",
+                        help="with --replay: fetch (and record) only the API calls "
+                             "that have no fixture yet")
     args = parser.parse_args()
 
     if args.max_inflight < 1:
         parser.error("--max-inflight must be at least 1")
+    if args.fill_missing and not args.replay:
+        parser.error("--fill-missing only makes sense with --replay")
     if args.replay and not os.path.isdir(args.replay):
         parser.error("--replay directory does not exist: %s" % args.replay)
 
@@ -329,7 +340,8 @@ def main():
     ProxyHandler.client = UpstreamClient(args.cache_ttl, args.max_inflight,
                                          args.min_interval,
                                          record_dir=args.record,
-                                         replay_dir=args.replay)
+                                         replay_dir=args.replay,
+                                         fill_missing=args.fill_missing)
     handler = partial(ProxyHandler, directory=STATIC_ROOT)
     httpd = ThreadingHTTPServer((BIND_HOST, args.port), handler)
 
@@ -337,7 +349,9 @@ def main():
     print("  -> http://localhost:%d/  (use localhost or 127.0.0.1 so the frontend "
           "uses the proxy)" % args.port)
     if args.replay:
-        print("  REPLAY mode: API calls answered from %s (no network)" % args.replay)
+        print("  REPLAY mode: API calls answered from %s (%s)"
+              % (args.replay, "missing ones fetched and recorded" if args.fill_missing
+                 else "no network"))
     else:
         print("  %s*      -> %s" % (API_PREFIX, BUILD_UPSTREAM + API_PREFIX))
         print("  %s*  -> %s" % (EWS_PREFIX, EWS_UPSTREAM + API_PREFIX))
