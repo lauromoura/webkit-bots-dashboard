@@ -58,11 +58,16 @@ export function renderEWSBuilderRow(builder, data) {
     if (!data)
         return row;
 
-    // Defensive filtering: a backend that ignores complete__eq (e.g. the mock
-    // server) returns mixed lists, and an in-progress build must never be shown
-    // as "last build" (its complete_at is null, i.e. "the epoch").
-    const running = (data.running || []).filter(b => !b.complete);
-    const builds = (data.builds || []).filter(b => b.complete);
+    // Defensive filtering: a backend that ignores the complete__eq / results__ne
+    // filters (e.g. the mock server) returns mixed lists. An in-progress build
+    // must never be shown as the last run (its complete_at is null, i.e. "the
+    // epoch"), and skipped builds didn't run anything.
+    const builds = (data.builds || []).filter(
+        b => b.complete && b.results !== RESULT_CODES.SKIPPED);
+    // The two lists come from separate requests, so a build can finish between
+    // them and show up in both; trust the finished list.
+    const finished = new Set(builds.map(b => b.number));
+    const running = (data.running || []).filter(b => !b.complete && !finished.has(b.number));
 
     // Current build column: newest in-progress build, plus how many others run.
     if (running.length === 0) {

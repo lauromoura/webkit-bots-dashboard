@@ -1,5 +1,6 @@
 import { el } from "./_dom.js";
 import { renderEWSBuilderRow } from "./ews-builder-row.js";
+import { RESULT_CODES } from "../lib/api.js";
 
 // Upper bound on in-progress builds listed per EWS queue (one per busy worker).
 const RUNNING_LIMIT = 50;
@@ -7,7 +8,7 @@ const RUNNING_LIMIT = 50;
 const HEADER_LABELS = [
     "Builder Name",
     "Current build",
-    "Last build",
+    "Last run",
     "Finished",
     "Other builds",
     "Link to buildbot",
@@ -23,6 +24,8 @@ const HEADER_LABELS = [
  */
 export function renderEWSBuilderTable(builders, ewsAPI) {
     const headerCells = HEADER_LABELS.map(label => el("th", null, [label]));
+    headerCells[2].setAttribute("title",
+        "Newest finished build, ignoring builds EWS skipped (closed PR, outdated hash)");
     headerCells[1].setAttribute("data-sort-method", "number");
     headerCells[3].setAttribute("data-sort-method", "number");
     headerCells[4].setAttribute("data-sort-method", "none");
@@ -48,7 +51,9 @@ export function renderEWSBuilderTable(builders, ewsAPI) {
 }
 
 /**
- * Fetch an EWS builder's running builds and its last N finished builds.
+ * Fetch an EWS builder's running builds and its last N finished builds,
+ * leaving out builds EWS skipped (closed PR, outdated hash, ...): they finish in
+ * a second without testing anything, so they say nothing about the queue.
  *
  * EWS queues run many builds in parallel on different workers, so the newest
  * build numbers are often several in-progress builds interleaved with finished
@@ -60,7 +65,8 @@ export function renderEWSBuilderTable(builders, ewsAPI) {
  * collisions with the post-commit client).
  *
  * @returns {Promise<{running: Array<Object>, builds: Array<Object>}>}
- *     running: in-progress builds, newest first; builds: finished, newest first.
+ *     running: in-progress builds, newest first; builds: finished and not
+ *     skipped, newest first.
  */
 async function getEWSLastBuilds(api, builderId, count = 6) {
     const base = `builders/${builderId}/builds?order=-number`;
@@ -68,7 +74,7 @@ async function getEWSLastBuilds(api, builderId, count = 6) {
         .map(f => `&field=${f}`).join("");
     const [running, finished] = await Promise.all([
         api.fetchAPI(`${base}&complete__eq=false&limit=${RUNNING_LIMIT}${runningFields}`),
-        api.fetchAPI(`${base}&complete__eq=true&limit=${count}`),
+        api.fetchAPI(`${base}&complete__eq=true&results__ne=${RESULT_CODES.SKIPPED}&limit=${count}`),
     ]);
     return { running: running.builds, builds: finished.builds };
 }
