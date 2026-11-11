@@ -1,6 +1,9 @@
 import { el } from "./_dom.js";
 import { renderEWSBuilderRow } from "./ews-builder-row.js";
 
+// Upper bound on in-progress builds listed per EWS queue (one per busy worker).
+const RUNNING_LIMIT = 50;
+
 const HEADER_LABELS = [
     "Builder Name",
     "Current build",
@@ -45,11 +48,27 @@ export function renderEWSBuilderTable(builders, ewsAPI) {
 }
 
 /**
- * Fetch last N builds for a builder using the given API client.
- * Simplified version of getLastBuilds without caching (EWS builds
- * are less frequent, and we avoid localStorage key collisions).
+ * Fetch an EWS builder's running builds and its last N finished builds.
+ *
+ * EWS queues run many builds in parallel on different workers, so the newest
+ * build numbers are often several in-progress builds interleaved with finished
+ * ones (or only in-progress ones). A single "last N builds" query therefore
+ * can't be split into "current" and "last finished" by position; ask for the
+ * two sets separately instead. The running query only needs a few small fields.
+ *
+ * No caching here (EWS builds are less frequent, and we avoid localStorage key
+ * collisions with the post-commit client).
+ *
+ * @returns {Promise<{running: Array<Object>, builds: Array<Object>}>}
+ *     running: in-progress builds, newest first; builds: finished, newest first.
  */
 async function getEWSLastBuilds(api, builderId, count = 6) {
-    const data = await api.fetchAPI(`builders/${builderId}/builds?order=-number&limit=${count + 1}`);
-    return data;
+    const base = `builders/${builderId}/builds?order=-number`;
+    const runningFields = ["number", "complete", "started_at", "state_string"]
+        .map(f => `&field=${f}`).join("");
+    const [running, finished] = await Promise.all([
+        api.fetchAPI(`${base}&complete__eq=false&limit=${RUNNING_LIMIT}${runningFields}`),
+        api.fetchAPI(`${base}&complete__eq=true&limit=${count}`),
+    ]);
+    return { running: running.builds, builds: finished.builds };
 }

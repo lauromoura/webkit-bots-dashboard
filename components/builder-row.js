@@ -35,26 +35,32 @@ export function renderBuilderRow(builder, data, verdict) {
     if (!data || data.builds.length === 0)
         return row;
 
-    const builds = [...data.builds];
-    let build = builds.shift();
-
-    if (build === undefined)
-        return row;
+    // A builder with several workers can have more than one build in progress,
+    // and not necessarily the newest-numbered ones, so split by state rather
+    // than by position: an in-progress build has no complete_at and must never
+    // be shown as the "last build".
+    const running = data.builds.filter(b => !b.complete);
+    const builds = data.builds.filter(b => b.complete);
 
     // Current build column
-    if (build.complete) {
+    if (running.length === 0) {
         currentBuildCell.textContent = "Waiting for jobs";
         currentBuildCell.setAttribute("data-sort", "0");
     } else {
+        const current = running[0];
         currentBuildCell.classList.add("building");
-        currentBuildCell.setAttribute("data-sort", `${now - build.started_at}`);
-        const link = el("a", { href: buildbotBuildURL(builder.builderid, build.number) },
-            [`(Build #${build.number})`]);
+        currentBuildCell.setAttribute("data-sort", `${now - current.started_at}`);
+        const link = el("a", { href: buildbotBuildURL(builder.builderid, current.number) },
+            [`(Build #${current.number})`]);
         currentBuildCell.appendChild(link);
-        currentBuildCell.appendChild(el("span", null, [` ${build.state_string}`]));
-        build = builds.shift();
+        currentBuildCell.appendChild(el("span", null, [` ${current.state_string}`]));
+        if (running.length > 1) {
+            currentBuildCell.appendChild(el("span", { className: "more-running" },
+                [` (+${running.length - 1} more running)`]));
+        }
     }
 
+    const build = builds.shift();
     if (!build)
         return row;
 

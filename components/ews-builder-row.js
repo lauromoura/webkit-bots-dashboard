@@ -30,6 +30,10 @@ function ewsResultClass(result) {
 /**
  * Render a single EWS builder row.
  * Same structure as builder-row.js but with EWS URLs and three-state coloring.
+ *
+ * @param {Object} builder - { builderid, name }
+ * @param {Object} data - { running, builds } from getEWSLastBuilds(): in-progress
+ *     builds and finished builds, both newest first.
  */
 export function renderEWSBuilderRow(builder, data) {
     const now = Math.floor(Date.now() / 1000);
@@ -51,29 +55,32 @@ export function renderEWSBuilderRow(builder, data) {
         buildTimeCell, otherBuildsCell, externalLinkCell,
     ]);
 
-    if (!data || data.builds.length === 0)
+    if (!data)
         return row;
 
-    const builds = [...data.builds];
-    let build = builds.shift();
+    // Defensive filtering: a backend that ignores complete__eq (e.g. the mock
+    // server) returns mixed lists, and an in-progress build must never be shown
+    // as "last build" (its complete_at is null, i.e. "the epoch").
+    const running = (data.running || []).filter(b => !b.complete);
+    const builds = (data.builds || []).filter(b => b.complete);
 
-    if (build === undefined)
-        return row;
-
-    // Current build column
-    if (build.complete) {
+    // Current build column: newest in-progress build, plus how many others run.
+    if (running.length === 0) {
         currentBuildCell.textContent = "Waiting for jobs";
-        currentBuildCell.setAttribute("data-sort", "0");
     } else {
+        const current = running[0];
         currentBuildCell.classList.add("building");
-        currentBuildCell.setAttribute("data-sort", `${now - build.started_at}`);
-        const link = el("a", { href: ewsBuildURL(builder.builderid, build.number) },
-            [`(Build #${build.number})`]);
-        currentBuildCell.appendChild(link);
-        currentBuildCell.appendChild(el("span", null, [` ${build.state_string}`]));
-        build = builds.shift();
+        currentBuildCell.setAttribute("data-sort", `${now - current.started_at}`);
+        currentBuildCell.appendChild(el("a", { href: ewsBuildURL(builder.builderid, current.number) },
+            [`(Build #${current.number})`]));
+        currentBuildCell.appendChild(el("span", null, [` ${current.state_string}`]));
+        if (running.length > 1) {
+            currentBuildCell.appendChild(el("span", { className: "more-running" },
+                [` (+${running.length - 1} more running)`]));
+        }
     }
 
+    const build = builds.shift();
     if (!build)
         return row;
 
