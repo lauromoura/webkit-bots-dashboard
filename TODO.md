@@ -1,5 +1,16 @@
 # TODO — WebKit Bots Dashboard Roadmap
 
+## Priority — make the project smoother to work on (humans and agents)
+
+In this order:
+
+1. [ ] **Centralize configuration** — one module (e.g. `lib/config.js`) for the Buildbot base URLs, the proxy-vs-direct rule, queue severity thresholds (`queue-row.js`), EWS name filters (`ews-queue.js`), and section definitions (`queue.js` / `bot-watcher.js`). The `location.hostname === "localhost"` check is copy-pasted in six files (`lib/api.js`, `job-duration.html`, `pages/{gardening,worker,builder,ews-queue}.js`); flip it to "direct only on the CORS-allowlisted origins (`people.igalia.com`, `teams.pages.igalia.com`), proxy everywhere else" so the pages also work in cloud dev environments.
+2. [ ] **Agent guide** — `AGENTS.md` (with `CLAUDE.md` pointing to it): architecture (pages / components / lib), how to run the proxy, replay and smoke test, and the house rules: develop against `dev-proxy.py --replay`, keep live Buildbot traffic low, the Buildbot CORS allow-list (`Tools/CISupport/*-webserver/master.cfg` in WebKit) and the deploy layout.
+3. [ ] **Verification loop in the repo** — a Playwright smoke test (e.g. `tools/smoke.py`) that loads every page against `dev-proxy.py --replay` and fails on console errors, plus fixtures (decide: commit a trimmed snapshot vs regenerate with `--record`). Package it as a devcontainer so Codespaces / Claude Code get the same loop (needs item 1).
+4. [ ] **Candidate staging** — before asking anyone to validate a change, update the staging deploy (`people.igalia.com/lmoura/webkit-bots-dashboard-staging/`) with the candidate branch. Make it a local push: `git config receive.denyCurrentBranch updateInstead` in the staging checkout, then `git push staging <branch>:main` from a local clone (keep the staging tree clean).
+5. [ ] **Retire or fix the mock server** — it has drifted (builder names don't match production, no EWS endpoints, `buildbot-mock-server.md` points at files that no longer exist) and renders "fine" with wrong data. Replay fixtures may replace it entirely.
+6. [ ] **Pin CDN dependencies, then add SRI** — Chart.js and `chartjs-adapter-date-fns` are loaded unversioned (tablesort is pinned); pin them to exact versions, then add `integrity` hashes to all CDN tags.
+
 ## Quick fixes / Low-hanging fruit
 
 - [x] Add `<meta name="viewport" content="width=device-width, initial-scale=1">` to all HTML pages — responsive CSS breakpoint at 1024px exists in `style.css` but won't trigger on mobile without it
@@ -17,12 +28,14 @@
 - [x] **Missing `.catch()` on promises** — `queue.js`, `ews-queue.js`, `builder.js`, `builder-table.js`, `time-limit-table.js` — added `.catch()` error handling to all unhandled promises
 - [x] **No fetch timeout** — `lib/api.js` `fetch()` calls have no timeout; added `AbortController` with 30s timeout
 - [x] **Missing null check in builder detail** — `builder.js` accesses `buildsData.builds.length` without verifying `.builds` exists; changed to optional chaining
+- [ ] **"Other builds" pills overflow** into the "Link to buildbot" column (text overlaps the last pill) in every builder table
+- [ ] **Long unbroken step messages overflow** — e.g. API-Tests EWS "Ignored pre-existing failures: TestWebKit.…" spills over the Finished / Other builds columns
 
 ## UX improvements (medium effort)
 
 - [ ] Loading indicators — pages show nothing while data fetches; add a spinner or skeleton
 - [x] Replace `<meta http-equiv="refresh">` with JS-based auto-refresh (`lib/auto-refresh.js`) that tracks elapsed time and respects tab visibility
-- [ ] Distinguish more build result types visually (WARNINGS, EXCEPTION, RETRY, CANCELLED — currently only SUCCESS vs FAILURE get colors)
+- [ ] Distinguish more build result types visually (WARNINGS, EXCEPTION, RETRY, CANCELLED — post-commit tables only color SUCCESS vs FAILURE; EWS tables add amber for FAILURE). Uses the still-unused `RESULT_CODES` in `lib/results.js`
 - [x] Add breadcrumb / smarter "back" navigation on builder detail (referrer-aware, links back to originating page)
 - [ ] Add build status filtering on builder detail page
 - [ ] Add search/filter capability on the main dashboard (`index.html` / Bot Watcher)
@@ -38,8 +51,9 @@
 
 ## Data & reliability
 
-- [ ] API retry with backoff on transient failures (currently a single failed fetch shows a static error until next auto-refresh, 5 min later)
+- [ ] API retry with backoff on transient failures (currently a single failed fetch shows a static error until next auto-refresh, 5 min later) — keep it to 1–2 retries with jitter, to stay gentle on Buildbot
 - [ ] Add localStorage cache TTL/expiration (currently only invalidated when the latest build number changes — stale data could persist indefinitely)
+- [ ] Namespace localStorage keys per deploy — production and staging share the `people.igalia.com` origin, hence the same `stepcache-*` / `buildcache-*` keys and the same 50-entry prune cap
 - [ ] Error indication per-builder row when an individual `getLastBuilds()` call fails (`components/builder-table.js`, affects all dashboard pages)
 
 ## Queue status enhancements
@@ -52,10 +66,7 @@
 ## Code quality / DRY
 
 - [ ] **Deduplicate queue page utilities** — `groupByBuilderId()`, `groupWorkersByBuilderId()`, and the status legend are copy-pasted between `queue.js` and `ews-queue.js`; extract to shared modules
-- [ ] **Centralize configuration** — severity thresholds (`queue-row.js:5-7`), EWS name filters (`ews-queue.js:21`), section definitions (`queue.js:8-15` / `bot-watcher.js:10-18`), and API base URLs are hardcoded in multiple places
 - [ ] **Consistent API factory pattern** — `builder.js:27` mixes `createAPI()` factory and named exports in `{ fetchAPI, getAllPendingRequests }`; pick one pattern
-- [ ] **Add SRI integrity hashes** to CDN `<script>` tags (Tablesort, Chart.js) in all HTML files
-- [ ] **Remove or consume unused `RESULT_CODES`** — `lib/api.js` defines WARNINGS/EXCEPTION/RETRY/CANCELLED but only SUCCESS and FAILURE are ever checked
 
 ## Accessibility
 
@@ -70,4 +81,4 @@
 - [ ] Real-time updates via EventSource/SSE (if buildbot supports it) instead of full-page reload
 - [ ] Dashboard summary page with key health metrics across all tiers
 - [ ] Progressive Web App support (offline caching, mobile install)
-- [ ] Test suite for components and mock server
+- [ ] Test suite for components (builds on the smoke test + replay fixtures from the priority list)
