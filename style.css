@@ -112,6 +112,19 @@ details > summary {
 
 /* Why a job is red: build step vs test step (see lib/steps.js) */
 
+.skip-count {
+    font-size: 0.85em;
+    opacity: 0.7;
+}
+
+.skip-count.churn {
+    background-color: #ffe066;
+    border-radius: 5px;
+    padding: 0 4px;
+    opacity: 1;
+    display: inline-block;
+}
+
 .step-note {
     font-style: italic;
     opacity: 0.75;

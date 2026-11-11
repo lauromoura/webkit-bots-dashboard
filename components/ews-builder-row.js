@@ -4,6 +4,13 @@ import { formatRelativeDate, formatRelativeDateFromNow } from "../lib/format.js"
 
 const EWS_BUILDBOT_BASE = "https://ews-build.webkit.org";
 
+// Older real runs shown as pills after the last run.
+const OLDER_RUNS = 5;
+
+// Fraction of skipped builds in the finished window from which the skip
+// count is highlighted as churn.
+const CHURN_THRESHOLD = 0.5;
+
 function ewsBuilderURL(id) {
     return `${EWS_BUILDBOT_BASE}/#/builders/${id}`;
 }
@@ -58,15 +65,17 @@ export function renderEWSBuilderRow(builder, data) {
     if (!data)
         return row;
 
-    // Defensive filtering: a backend that ignores the complete__eq / results__ne
-    // filters (e.g. the mock server) returns mixed lists. An in-progress build
-    // must never be shown as the last run (its complete_at is null, i.e. "the
-    // epoch"), and skipped builds didn't run anything.
-    const builds = (data.builds || []).filter(
-        b => b.complete && b.results !== RESULT_CODES.SKIPPED);
+    // Defensive filtering: a backend that ignores the complete__eq filter (e.g.
+    // the mock server) returns mixed lists, and an in-progress build must never
+    // be shown as the last run (its complete_at is null, i.e. "the epoch").
+    const finishedBuilds = (data.builds || []).filter(b => b.complete);
+    // Skipped builds (closed PR, outdated hash, ...) didn't run anything: they
+    // are only counted, as a churn indicator, never shown as runs.
+    const skipped = finishedBuilds.filter(b => b.results === RESULT_CODES.SKIPPED).length;
+    const builds = finishedBuilds.filter(b => b.results !== RESULT_CODES.SKIPPED);
     // The two lists come from separate requests, so a build can finish between
     // them and show up in both; trust the finished list.
-    const finished = new Set(builds.map(b => b.number));
+    const finished = new Set(finishedBuilds.map(b => b.number));
     const running = (data.running || []).filter(b => !b.complete && !finished.has(b.number));
 
     // Current build column: newest in-progress build, plus how many others run.
@@ -83,6 +92,15 @@ export function renderEWSBuilderRow(builder, data) {
             currentBuildCell.appendChild(el("span", { className: "more-running" },
                 [` (+${running.length - 1} more running)`]));
         }
+    }
+
+    // Skip count over the finished window, shown whenever there is a skip.
+    if (skipped > 0) {
+        const isChurn = skipped / finishedBuilds.length >= CHURN_THRESHOLD;
+        otherBuildsCell.appendChild(el("div", {
+            className: isChurn ? "skip-count churn" : "skip-count",
+            "data-skipped": `${skipped}`,
+        }, [`${skipped}/${finishedBuilds.length} skipped`]));
     }
 
     const build = builds.shift();
@@ -107,7 +125,7 @@ export function renderEWSBuilderRow(builder, data) {
 
     // Older builds column (colored pills)
     const ul = el("ul");
-    for (const olderBuild of builds) {
+    for (const olderBuild of builds.slice(0, OLDER_RUNS)) {
         const cls = ewsResultClass(olderBuild.results);
         const li = el("li", { className: cls }, [
             el("a", { href: ewsBuildURL(builder.builderid, olderBuild.number) },
@@ -115,7 +133,7 @@ export function renderEWSBuilderRow(builder, data) {
         ]);
         ul.appendChild(li);
     }
-    otherBuildsCell.appendChild(ul);
+    otherBuildsCell.insertBefore(ul, otherBuildsCell.firstChild);
 
     return row;
 }
