@@ -1,5 +1,6 @@
 import { startAutoRefresh } from "../lib/auto-refresh.js";
-import { fetchAPI, createAPI, getAllPendingRequests, getAllWorkers } from "../lib/api.js";
+import { fetchAPI, ewsAPI, getAllPendingRequests, getAllWorkers } from "../lib/api.js";
+import { siteBase } from "../lib/config.js";
 import { buildbotBuilderURL, buildbotBuildRequestURL, workerPageURL } from "../lib/urls.js";
 import { formatRelativeDateFromNow } from "../lib/format.js";
 import { renderPageHeader } from "../components/page-header.js";
@@ -9,9 +10,7 @@ import { classifyWorker } from "../components/queue-row.js";
 import { el } from "../components/_dom.js";
 import { computeMetrics, computeEWSMetrics, formatPercent, formatDuration } from "./_digest-utils.js";
 
-const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-const EWS_BASE_URL = isLocal ? "/ews/api/v2/" : "https://ews-build.webkit.org/api/v2/";
-const EWS_BUILDBOT_BASE = "https://ews-build.webkit.org/";
+const EWS_BUILDBOT_BASE = siteBase("ews");
 
 function formatDateStr(date) {
     const yyyy = date.getFullYear();
@@ -160,7 +159,7 @@ async function init() {
     };
 
     // Select API and buildbot base URL based on mode
-    const api = isEWS ? createAPI(EWS_BASE_URL) : { fetchAPI, getAllPendingRequests, getAllWorkers };
+    const api = isEWS ? ewsAPI : { fetchAPI, getAllPendingRequests, getAllWorkers };
     const buildbotBase = isEWS ? EWS_BUILDBOT_BASE : undefined;
 
     app.appendChild(renderPageHeader("Builder detail"));

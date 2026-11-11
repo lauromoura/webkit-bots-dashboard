@@ -5,9 +5,11 @@ trying to provide more useful information than the default buildbot views.
 
 ## Local development
 
-Browsers on `localhost` can't call build.webkit.org directly (the Buildbot CORS
-allow-list only accepts the production origins), so run the dev proxy, which
-serves the pages and forwards `/api/v2/` and `/ews/api/v2/` server-side:
+Only the production hosts (`people.igalia.com`, `teams.pages.igalia.com`) are on
+the Buildbot CORS allow-list, so anywhere else (localhost, Codespaces, ...) the
+pages call the API through `/api/v2/` and `/ews/api/v2/` on their own origin
+(see `lib/config.js`). Run the dev proxy, which serves the pages and forwards
+those paths server-side:
 
     ./dev-proxy.py                      # live data on http://localhost:8000/
     ./dev-proxy.py --record fixtures/   # live, and snapshot every API response

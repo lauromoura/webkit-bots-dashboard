@@ -1,5 +1,5 @@
 import { startAutoRefresh } from "../lib/auto-refresh.js";
-import { getBuilders, createAPI } from "../lib/api.js";
+import { getBuilders, ewsAPI } from "../lib/api.js";
 import { isRelevantPlatform, isRetired } from "../lib/builders.js";
 import { renderPageHeader } from "../components/page-header.js";
 import { renderBuilderTable } from "../components/builder-table.js";
@@ -91,9 +91,6 @@ function warnMissing(label, builders, expectedNames) {
 
 // ── EWS API client ──
 
-const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-const EWS_BASE_URL = isLocal ? "/ews/api/v2/" : "https://ews-build.webkit.org/api/v2/";
-const ewsAPI = createAPI(EWS_BASE_URL);
 
 // ── Page init ──
 

@@ -1,13 +1,11 @@
 import { el } from "./_dom.js";
 import { renderEWSBuilderRow } from "./ews-builder-row.js";
-import { RESULT_CODES } from "../lib/api.js";
+import { EWS_GARDENING } from "../lib/config.js";
 
-// Upper bound on in-progress builds listed per EWS queue (one per busy worker).
-const RUNNING_LIMIT = 50;
-
-// How many finished builds to look at per queue. Skipped builds are counted
-// within this window (churn indicator); the rest feed the last run + pills.
-const FINISHED_WINDOW = 15;
+// RUNNING_LIMIT: upper bound on in-progress builds listed per EWS queue (one per
+// busy worker). FINISHED_WINDOW: finished builds looked at per queue; skipped
+// ones are counted within it (churn indicator), the rest feed last run + pills.
+const { runningLimit: RUNNING_LIMIT, finishedWindow: FINISHED_WINDOW } = EWS_GARDENING;
 
 // Fields the row actually uses; keeps the larger finished window cheap.
 const RUNNING_FIELDS = ["number", "complete", "started_at", "state_string"];

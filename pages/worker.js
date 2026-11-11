@@ -1,5 +1,6 @@
 import { startAutoRefresh } from "../lib/auto-refresh.js";
-import { fetchAPI, createAPI } from "../lib/api.js";
+import { fetchAPI, ewsAPI } from "../lib/api.js";
+import { siteBase } from "../lib/config.js";
 import { builderPageURL } from "../lib/urls.js";
 import { renderPageHeader } from "../components/page-header.js";
 import { renderBuildHistoryTable } from "../components/build-history-table.js";
@@ -7,9 +8,7 @@ import { readPagingParams, renderCountSelector, renderPagination } from "../comp
 import { classifyWorker } from "../components/queue-row.js";
 import { el } from "../components/_dom.js";
 
-const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-const EWS_BASE_URL = isLocal ? "/ews/api/v2/" : "https://ews-build.webkit.org/api/v2/";
-const EWS_BUILDBOT_BASE = "https://ews-build.webkit.org/";
+const EWS_BUILDBOT_BASE = siteBase("ews");
 
 async function init() {
     const app = document.getElementById("app");
@@ -37,7 +36,7 @@ async function init() {
         return `?${p.toString()}`;
     };
 
-    const api = isEWS ? createAPI(EWS_BASE_URL) : { fetchAPI };
+    const api = isEWS ? ewsAPI : { fetchAPI };
     const buildbotBase = isEWS ? EWS_BUILDBOT_BASE : undefined;
 
     app.appendChild(renderPageHeader("Worker detail"));
@@ -97,7 +96,7 @@ async function init() {
 
     const workerBuildbotURL = isEWS
         ? `${EWS_BUILDBOT_BASE}#/workers/${workerId}`
-        : `https://build.webkit.org/#/workers/${workerId}`;
+        : `${siteBase("postCommit")}#/workers/${workerId}`;
     infoItems.push(el("li", null, [
         "Buildbot: ",
         el("a", { href: workerBuildbotURL, target: "_blank" }, [workerBuildbotURL]),

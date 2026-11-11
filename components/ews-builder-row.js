@@ -1,22 +1,19 @@
 import { el } from "./_dom.js";
 import { RESULT_CODES } from "../lib/api.js";
 import { formatRelativeDate, formatRelativeDateFromNow } from "../lib/format.js";
+import { siteBase, EWS_GARDENING } from "../lib/config.js";
 
-const EWS_BUILDBOT_BASE = "https://ews-build.webkit.org";
-
-// Older real runs shown as pills after the last run.
-const OLDER_RUNS = 5;
-
-// Fraction of skipped builds in the finished window from which the skip
-// count is highlighted as churn.
-const CHURN_THRESHOLD = 0.5;
+// Older real runs shown as pills after the last run, and the fraction of
+// skipped builds in the finished window from which the skip count is
+// highlighted as churn.
+const { olderRuns: OLDER_RUNS, churnThreshold: CHURN_THRESHOLD } = EWS_GARDENING;
 
 function ewsBuilderURL(id) {
-    return `${EWS_BUILDBOT_BASE}/#/builders/${id}`;
+    return `${siteBase("ews")}#/builders/${id}`;
 }
 
 function ewsBuildURL(id, number) {
-    return `${EWS_BUILDBOT_BASE}/#/builders/${id}/builds/${number}`;
+    return `${siteBase("ews")}#/builders/${id}/builds/${number}`;
 }
 
 /**

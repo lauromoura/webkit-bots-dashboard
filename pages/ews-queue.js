@@ -1,28 +1,14 @@
 import { startAutoRefresh } from "../lib/auto-refresh.js";
-import { createAPI } from "../lib/api.js";
+import { ewsAPI } from "../lib/api.js";
+import { siteBase, QUEUE_THRESHOLDS, EWS_QUEUE_NAME_FILTERS } from "../lib/config.js";
 import { renderPageHeader } from "../components/page-header.js";
 import { renderQueueTable } from "../components/queue-table.js";
 import { el } from "../components/_dom.js";
 
-const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-const EWS_BASE_URL = isLocal ? "/ews/api/v2/" : "https://ews-build.webkit.org/api/v2/";
-const EWS_BUILDBOT_BASE = "https://ews-build.webkit.org/";
-
-const ewsAPI = createAPI(EWS_BASE_URL);
-
-// EWS severity thresholds — same as post-commit for now, but separate
-// variables so they can be tuned independently later.
-const EWS_THRESHOLDS = {
-    spinupThresholdSec: 600,       // 10 minutes
-    pendingWarnThreshold: 3,
-    waitWarnThresholdSec: 1800,    // 30 minutes
-};
-
-// Only show builders whose name contains one of these strings.
-const EWS_NAME_FILTERS = ["WPE", "GTK", "JSC-ARMv7"];
+const EWS_BUILDBOT_BASE = siteBase("ews");
 
 function isRelevantEWSBuilder(builder) {
-    return EWS_NAME_FILTERS.some(f => builder.name.includes(f));
+    return EWS_QUEUE_NAME_FILTERS.some(f => builder.name.includes(f));
 }
 
 function groupByBuilderId(requests) {
@@ -94,7 +80,7 @@ async function init() {
     // Single flat table — no tier grouping for EWS
     const table = renderQueueTable(relevantBuilders, requestsByBuilder, workersByBuilder, {
         showIdleWorkers: true,
-        thresholds: EWS_THRESHOLDS,
+        thresholds: QUEUE_THRESHOLDS.ews,
         buildbotBase: EWS_BUILDBOT_BASE,
     });
     app.appendChild(table);

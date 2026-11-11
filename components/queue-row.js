@@ -1,10 +1,11 @@
 import { el } from "./_dom.js";
 import { buildbotBuilderURL, builderPageURL, workerPageURL } from "../lib/urls.js";
+import { QUEUE_THRESHOLDS } from "../lib/config.js";
 
-// Default severity thresholds (post-commit)
-const SPINUP_THRESHOLD_SEC = 600;        // 10 minutes — normal worker spin-up time
-const PENDING_WARN_THRESHOLD = 3;
-const WAIT_WARN_THRESHOLD_SEC = 1800;    // 30 minutes
+// Default severity thresholds (post-commit); callers may pass overrides.
+const SPINUP_THRESHOLD_SEC = QUEUE_THRESHOLDS.postCommit.spinupThresholdSec;
+const PENDING_WARN_THRESHOLD = QUEUE_THRESHOLDS.postCommit.pendingWarnThreshold;
+const WAIT_WARN_THRESHOLD_SEC = QUEUE_THRESHOLDS.postCommit.waitWarnThresholdSec;
 
 const SEVERITY_IDLE = 0;
 const SEVERITY_WORKING = 1;

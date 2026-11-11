@@ -20,6 +20,10 @@ Then open `http://localhost:3000/`. All pages except `charts.html` (which uses `
 - Supports the query parameters the dashboard actually uses: `complete`, `results`, `order`, `limit`, `property=identifier`
 - Builders 6 and 133 get 350 builds each with shared identifiers so `unified.html` works
 
-## How localhost detection works
+## How the pages pick the API endpoint
 
-`modules/utils.js` and `unified.js` check `location.hostname` — when it's `localhost` or `127.0.0.1`, API calls use relative paths (`/api/v2/`) instead of `https://build.webkit.org/api/v2/`. UI links to build.webkit.org are unchanged.
+`lib/config.js` decides: on the CORS-allowlisted production hosts
+(`people.igalia.com`, `teams.pages.igalia.com`) pages call
+`https://build.webkit.org/api/v2/` directly; on any other host they use the
+relative `/api/v2/` (and `/ews/api/v2/`) paths, which this server answers. UI
+links to build.webkit.org are unchanged.

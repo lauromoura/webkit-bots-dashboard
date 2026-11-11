@@ -346,8 +346,8 @@ def main():
     httpd = ThreadingHTTPServer((BIND_HOST, args.port), handler)
 
     print("Dashboard dev proxy serving %s" % STATIC_ROOT)
-    print("  -> http://localhost:%d/  (use localhost or 127.0.0.1 so the frontend "
-          "uses the proxy)" % args.port)
+    print("  -> http://localhost:%d/  (pages use the proxy on any host except the "
+          "CORS-allowlisted ones, see lib/config.js)" % args.port)
     if args.replay:
         print("  REPLAY mode: API calls answered from %s (%s)"
               % (args.replay, "missing ones fetched and recorded" if args.fill_missing
