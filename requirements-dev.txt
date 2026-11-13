@@ -1,0 +1,5 @@
+# Development-only tools (the dashboard itself has no dependencies).
+# Install:  python3 -m pip install -r requirements-dev.txt
+#           python3 -m playwright install chromium
+playwright==1.63.0
+pytest==9.2.0

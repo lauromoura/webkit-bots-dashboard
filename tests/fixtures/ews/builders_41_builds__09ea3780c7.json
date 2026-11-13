@@ -1,0 +1,1 @@
+{"content_type":"application/json; charset=utf-8","json":{"builds":[{"complete":false,"number":138399,"started_at":1794591007,"state_string":"building"}],"meta":{"total":1}},"path":"/ews/api/v2/builders/41/builds?order=-number&complete__eq=false&limit=50&field=number&field=complete&field=started_at&field=state_string","recorded_at":"2026-11-13T17:33:05Z","status":200}

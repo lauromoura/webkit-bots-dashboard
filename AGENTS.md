@@ -30,6 +30,7 @@ browser. Production and staging are plain git clones served from
 | `mock-server/` | Node mock Buildbot. **Out of date** (builder names don't match production, no EWS): prefer replay fixtures. |
 | `legacy/` | Old pages. Don't touch unless asked. |
 | `docs/api-consumption.md` | Per-page API usage, written for the WebKit sysadmins. |
+| `tests/` | Browser test suite (pytest + Playwright) with recorded fixtures; see `tests/README.md`. |
 | `TODO.md` | Roadmap; the "Priority" list at the top is the current order of work. |
 
 Builder lists and page sections (`pages/gardening.js`, `pages/bot-watcher.js`,
@@ -104,21 +105,19 @@ push there (no SSH access), ask the maintainer to run that command.
 
 ## Verifying a change
 
-Until the automated smoke test lands (`TODO.md`, priority item 3):
+```sh
+make test     # offline, ~1 min; see tests/README.md (needs requirements-dev.txt)
+```
 
-1. Run `./dev-proxy.py --replay fixtures/ -v` (or `make serve-replay`) and load
-   every page your change can affect; check the browser console for errors.
-   404s for `digest/data*` files are expected locally.
-2. Compare the API paths each page requests before and after your change
-   (`-v` logs every `proxy GET`); unexpected differences are regressions, and
-   expected ones go into `docs/api-consumption.md`.
-3. For behavior changes, compare the rendered result (tables, links, labels)
-   before and after under the same replayed data.
-4. For bug fixes, write the reproduction first and check that it fails before
-   the fix and passes after.
-
-Note that relative times ("5 min ago") drift in replay, since fixtures keep
-their original timestamps.
+- Every change must leave `make test` passing. If what a page requests changes
+  on purpose, run `make test-update`, review the diff of `tests/api-paths.json`
+  and update `docs/api-consumption.md`.
+- For a bug fix, add a test that fails before the fix and passes after.
+- Never edit `tests/fixtures/` by hand. `make record-fixtures` re-records it
+  (and the API snapshot) from live Buildbot: a deliberate, throttled run of
+  ~150 requests, only when a new query needs data or the data must be refreshed.
+- Tests freeze the browser clock at the recording time; outside the tests,
+  relative times ("5 min ago") drift in replay.
 
 ## Buildbot gotchas
 

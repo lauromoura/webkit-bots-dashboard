@@ -1,0 +1,1 @@
+{"content_type":"application/json; charset=utf-8","json":{"builders":[{"builderid":1,"description":"gtk-wk2","description_format":null,"description_html":null,"masterids":[4],"name":"GTK-WK2-Tests-EWS","projectid":null,"tags":["GTK","Tests","WK2"]}],"meta":{}},"path":"/ews/api/v2/builders/1","recorded_at":"2026-11-13T17:32:10Z","status":200}

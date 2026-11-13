@@ -1,0 +1,1 @@
+{"content_type":"application/json; charset=utf-8","json":{"builders":[{"builderid":6,"description":null,"description_format":null,"description_html":null,"masterids":[67,133],"name":"WPE-Linux-64-bit-Release-Build","projectid":null,"tags":["WPE","Linux","64","Release","bit","Build"]}],"meta":{}},"path":"/api/v2/builders/6","recorded_at":"2026-11-13T17:32:09Z","status":200}

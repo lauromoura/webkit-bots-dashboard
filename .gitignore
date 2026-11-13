@@ -1,3 +1,4 @@
 digest/data/
 __pycache__/
-fixtures/
+/fixtures/
+tests/fixtures.new/
