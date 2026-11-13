@@ -265,15 +265,33 @@
             return `${API_BASE}builders/${currentBuilderName}/builds?limit=${currentCount}&offset=${currentOffset}&order=-number&property=identifier`;
         }
 
-        // Function to get builder page URL
-        function getBuilderPageUrl(buildNumber) {
-            return `${siteBase("postCommit")}#/builders/${currentBuilderName}/builds/${buildNumber}`;
+        // Link to a build in the Buildbot UI. Uses the build's own builderid, so
+        // the link is right whatever the data came from (preset, URL, file);
+        // falls back to the selected builder's name for trimmed JSON without it.
+        function getBuildPageUrl(build) {
+            const builder = build.builderid ?? currentBuilderName;
+            return `${siteBase("postCommit")}#/builders/${builder}/builds/${build.number}`;
+        }
+
+        // Every load (initial, preset, dropdown, URL, file) takes a ticket; when
+        // its data arrives, it only renders if no newer load started meanwhile,
+        // so a slow earlier response can't overwrite a later selection.
+        let latestLoad = 0;
+        function startLoad() {
+            return ++latestLoad;
+        }
+        function isLatestLoad(ticket) {
+            return ticket === latestLoad;
+        }
+
+        // Label for what the table/chart currently show.
+        function setCurrentSource(text) {
+            document.getElementById('currentBuilder').textContent = text;
         }
 
         // Function to select a builder and load its data
         async function selectBuilder(builderName) {
             currentBuilderName = builderName;
-            document.getElementById('currentBuilder').textContent = builderName;
 
             // Reset dropdown selection
             document.getElementById('builderSelect').value = '';
@@ -285,10 +303,16 @@
         }
 
         // Re-fetch the current builder at the current count/offset and render.
+        // Every builder load (selection, job count, prev/next) goes through here,
+        // so this is where the load ticket is taken.
         async function reloadData() {
+            const ticket = startLoad();
+            setCurrentSource(currentBuilderName);
             document.getElementById('urlInput').value = getBuilderAPIUrl();
             showStatus(`Loading data for ${currentBuilderName}...`);
             const data = await loadData(getBuilderAPIUrl());
+            if (!isLatestLoad(ticket))
+                return;
 
             if (data) {
                 processData(data);
@@ -635,7 +659,7 @@
                 const safeBuildNumber = escapeHTML(String(build.number));
                 const safeIdentifier = escapeHTML(identifier);
                 const safeStatus = escapeHTML(status);
-                const buildNumberLink = `<a href="${getBuilderPageUrl(build.number)}" target="_blank">${safeBuildNumber}</a>`;
+                const buildNumberLink = `<a href="${getBuildPageUrl(build)}" target="_blank">${safeBuildNumber}</a>`;
                 const identifierLink = identifier !== 'N/A'
                     ? `<a href="https://commits.webkit.org/${encodeURIComponent(identifier)}" target="_blank">${safeIdentifier}</a>`
                     : safeIdentifier;
@@ -689,8 +713,13 @@
                 return;
             }
 
+            const ticket = startLoad();
+            setCurrentSource('Loaded from URL');
+            document.getElementById('builderSelect').value = '';
             showStatus('Loading from URL...');
             const data = await loadData(url);
+            if (!isLatestLoad(ticket))
+                return;
 
             if (data) {
                 processData(data);
@@ -710,13 +739,20 @@
                 return;
             }
 
+            const ticket = startLoad();
+            setCurrentSource(`Loaded from file (${file.name})`);
+            document.getElementById('builderSelect').value = '';
             showStatus('Loading from file...');
 
             try {
                 const text = await file.text();
                 const data = JSON.parse(text);
+                if (!isLatestLoad(ticket))
+                    return;
                 processData(data);
             } catch (error) {
+                if (!isLatestLoad(ticket))
+                    return;
                 console.error('Error reading file:', error);
                 document.getElementById('tableContainer').innerHTML = '<p>Failed to read file</p>';
                 showStatus('Failed to read or parse the file', true);
@@ -725,12 +761,15 @@
 
         // Main execution
         async function init() {
+            const ticket = startLoad();
             // Update URL input with default builder
             document.getElementById('urlInput').value = getBuilderAPIUrl();
 
             // Auto-load default builder on page load
             showStatus('Loading default builder data...');
             const data = await loadData(getBuilderAPIUrl());
+            if (!isLatestLoad(ticket))
+                return;
 
             if (data) {
                 processData(data);
