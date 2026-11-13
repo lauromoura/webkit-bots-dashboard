@@ -170,14 +170,14 @@
     <div class="controls">
         <div class="control-group">
             <label>Main Builders:</label>
-            <button onclick="selectBuilder('WPE-Linux-64-bit-Release-Build')">WPE Release Build</button>
-            <button onclick="selectBuilder('WPE-Linux-64-bit-Debug-Build')">WPE Debug Build</button>
-            <button onclick="selectBuilder('WPE-Linux-64-bit-Release-Tests')">WPE Release Tests</button>
-            <button onclick="selectBuilder('WPE-Linux-64-bit-Debug-Tests')">WPE Debug Tests</button>
+            <button data-builder="WPE-Linux-64-bit-Release-Build">WPE Release Build</button>
+            <button data-builder="WPE-Linux-64-bit-Debug-Build">WPE Debug Build</button>
+            <button data-builder="WPE-Linux-64-bit-Release-Tests">WPE Release Tests</button>
+            <button data-builder="WPE-Linux-64-bit-Debug-Tests">WPE Debug Tests</button>
         </div>
         <div class="control-group">
             <label for="builderSelect">Other Builders:</label>
-            <select id="builderSelect" onchange="selectBuilderFromDropdown()">
+            <select id="builderSelect">
                 <option value="">-- Select a builder --</option>
                 <option value="WPE-Linux-64-bit-Debug-JS-Tests">WPE-Linux-64-bit-Debug-JS-Tests</option>
                 <option value="WPE-Linux-64-bit-Debug-WebDriver-Tests">WPE-Linux-64-bit-Debug-WebDriver-Tests</option>
@@ -206,25 +206,25 @@
         </div>
         <div class="control-group build-history-pagination">
             <label for="jobCountSelect">Show jobs:</label>
-            <select id="jobCountSelect" class="build-count-select" onchange="changeJobCount()">
+            <select id="jobCountSelect" class="build-count-select">
                 <option value="25">25</option>
                 <option value="50">50</option>
                 <option value="100" selected>100</option>
                 <option value="200">200</option>
             </select>
-            <button id="prevPageBtn" onclick="prevPage()">&lsaquo; Prev</button>
+            <button id="prevPageBtn">&lsaquo; Prev</button>
             <span id="pageInfo" class="pagination-status"></span>
-            <button id="nextPageBtn" onclick="nextPage()">Next &rsaquo;</button>
+            <button id="nextPageBtn">Next &rsaquo;</button>
         </div>
         <div class="control-group">
             <label for="urlInput">Load from URL:</label>
             <input type="text" id="urlInput" placeholder="Enter JSON URL">
-            <button onclick="loadFromURL()">Load</button>
+            <button id="loadURLButton">Load</button>
         </div>
         <div class="control-group">
             <label for="fileInput">Load from File:</label>
             <input type="file" id="fileInput" accept=".json">
-            <button onclick="loadFromFile()">Load</button>
+            <button id="loadFileButton">Load</button>
         </div>
         <div id="statusMessage"></div>
     </div>
@@ -232,15 +232,17 @@
     <div class="chart-container">
         <div class="chart-controls">
             <strong>X-Axis:</strong><br>
-            <label><input type="radio" name="xaxis" value="timestamp" checked onchange="updateChart()"> Timestamp (Started)</label>
-            <label><input type="radio" name="xaxis" value="buildnumber" onchange="updateChart()"> Build Number</label>
+            <label><input type="radio" name="xaxis" value="timestamp" checked> Timestamp (Started)</label>
+            <label><input type="radio" name="xaxis" value="buildnumber"> Build Number</label>
         </div>
         <canvas id="durationChart"></canvas>
     </div>
 
     <div id="tableContainer"></div>
 
-    <script>
+    <script type="module">
+        import { apiBase, siteBase } from "./lib/config.js";
+
         function escapeHTML(str) {
             const div = document.createElement("div");
             div.textContent = str;
@@ -254,10 +256,9 @@
         let currentCount = 100;
         let currentOffset = 0;
 
-        // In local dev, hit the same-origin proxy (dev-proxy.py) instead of the
-        // absolute URL, which the Buildbot CORS allow-list rejects from localhost.
-        const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-        const API_BASE = isLocal ? "/api/v2/" : "https://build.webkit.org/api/v2/";
+        // Direct on the CORS-allowlisted hosts, same-origin proxy elsewhere
+        // (see lib/config.js).
+        const API_BASE = apiBase("postCommit");
 
         // Function to get API URL for current builder
         function getBuilderAPIUrl() {
@@ -266,7 +267,7 @@
 
         // Function to get builder page URL
         function getBuilderPageUrl(buildNumber) {
-            return `https://build.webkit.org/#/builders/${currentBuilderName}/builds/${buildNumber}`;
+            return `${siteBase("postCommit")}#/builders/${currentBuilderName}/builds/${buildNumber}`;
         }
 
         // Function to select a builder and load its data
@@ -737,6 +738,18 @@
                 showStatus('Ready to load data. Select a builder above.', false);
             }
         }
+
+        // Wire up the controls (module scope: no inline handlers / globals).
+        for (const button of document.querySelectorAll("button[data-builder]"))
+            button.addEventListener("click", () => selectBuilder(button.dataset.builder));
+        document.getElementById("builderSelect").addEventListener("change", selectBuilderFromDropdown);
+        document.getElementById("loadURLButton").addEventListener("click", loadFromURL);
+        document.getElementById("loadFileButton").addEventListener("click", loadFromFile);
+        for (const radio of document.querySelectorAll('input[name="xaxis"]'))
+            radio.addEventListener("change", updateChart);
+        document.getElementById("jobCountSelect").addEventListener("change", changeJobCount);
+        document.getElementById("prevPageBtn").addEventListener("click", prevPage);
+        document.getElementById("nextPageBtn").addEventListener("click", nextPage);
 
         // Initialize when the page loads
         init();
