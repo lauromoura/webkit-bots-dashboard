@@ -19,6 +19,8 @@ In this order:
 - [x] Add auto-refresh to `builder.html` (the only monitoring page without it)
 - [x] Remove unused `formatSeconds()` from `lib/format.js`
 - [x] Replace deprecated `substr()` with `slice()` in `lib/format.js:41`
+- [ ] **Ignore `digest/data-ews/`** — the digest pipeline writes EWS data there (`digest/digest.py`, `fetch-digest-data.py --ews`), but `.gitignore` only covers `digest/data/`
+- [ ] **Refresh `docs/api-consumption.md`** — the gardening EWS tables now make two requests per queue (running builds + last 15 finished, field-restricted) instead of one; re-measure and update the per-page numbers for the WebKit sysadmins
 
 ## Bugs & code safety
 
