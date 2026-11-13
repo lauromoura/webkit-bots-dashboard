@@ -318,6 +318,8 @@
                 processData(data);
             } else {
                 document.getElementById('tableContainer').innerHTML = '<p>Failed to load data</p>';
+                // Same as an empty page, so no stale "(from file)" info lingers.
+                updatePageInfo([]);
                 showStatus('Failed to load data from BuildBot API. Check console for details.', true);
             }
         }
@@ -343,12 +345,21 @@
         // Update the "Page X of N" line and enable/disable the prev/next buttons.
         // Total is derived from the newest build number on the page plus the
         // offset — reliable here because this is a single, unfiltered builder.
-        function updatePageInfo(builds) {
+        // Data loaded from a URL or a file has no paging context: just count it
+        // and disable prev/next (the count selector goes back to the builder).
+        function updatePageInfo(builds, source = 'builder') {
             const pageInfo = document.getElementById('pageInfo');
             const prevBtn = document.getElementById('prevPageBtn');
             const nextBtn = document.getElementById('nextPageBtn');
 
             const shown = builds ? builds.length : 0;
+            if (source !== 'builder') {
+                const from = source === 'url' ? 'URL' : 'file';
+                pageInfo.textContent = `${shown} build${shown === 1 ? '' : 's'} (from ${from})`;
+                prevBtn.disabled = true;
+                nextBtn.disabled = true;
+                return;
+            }
             const total = shown ? builds[0].number + currentOffset : currentOffset;
             const totalPages = Math.max(1, Math.ceil(total / currentCount));
             const page = Math.floor(currentOffset / currentCount) + 1;
@@ -692,15 +703,16 @@
         }
 
         // Function to process loaded data
-        function processData(data) {
+        // source: 'builder' (a page of the selected builder), 'url' or 'file'.
+        function processData(data, source = 'builder') {
             if (data && data.builds && data.builds.length > 0) {
                 const builds = data.builds;
                 displayResults(builds);
-                updatePageInfo(builds);
+                updatePageInfo(builds, source);
                 showStatus(`Successfully loaded ${builds.length} builds`);
             } else {
                 document.getElementById('tableContainer').innerHTML = '<p>No data available</p>';
-                updatePageInfo([]);
+                updatePageInfo([], source);
                 showStatus('No builds found in the JSON', true);
             }
         }
@@ -722,9 +734,10 @@
                 return;
 
             if (data) {
-                processData(data);
+                processData(data, 'url');
             } else {
                 document.getElementById('tableContainer').innerHTML = '<p>Failed to load data</p>';
+                updatePageInfo([], 'url');
                 showStatus('Failed to load data from URL. Check console for details.', true);
             }
         }
@@ -749,12 +762,13 @@
                 const data = JSON.parse(text);
                 if (!isLatestLoad(ticket))
                     return;
-                processData(data);
+                processData(data, 'file');
             } catch (error) {
                 if (!isLatestLoad(ticket))
                     return;
                 console.error('Error reading file:', error);
                 document.getElementById('tableContainer').innerHTML = '<p>Failed to read file</p>';
+                updatePageInfo([], 'file');
                 showStatus('Failed to read or parse the file', true);
             }
         }
