@@ -1,5 +1,7 @@
 import { el } from "./_dom.js";
 import { renderEWSBuilderRow } from "./ews-builder-row.js";
+import { renderPlaceholderRow } from "./placeholder-row.js";
+import { compareByName } from "../lib/builders.js";
 import { EWS_GARDENING } from "../lib/config.js";
 
 // RUNNING_LIMIT: upper bound on in-progress builds listed per EWS queue (one per
@@ -46,16 +48,23 @@ export function renderEWSBuilderTable(builders, ewsAPI) {
     const tbody = el("tbody");
     const table = el("table", null, [thead, tbody]);
 
-    const promises = builders.map(builder =>
-        getEWSLastBuilds(ewsAPI, builder.builderid).then(data => {
-            tbody.appendChild(renderEWSBuilderRow(builder, data));
-        })
-    );
+    // Rows are alphabetical, whatever order the responses arrive in (see
+    // builder-table.js).
+    const promises = [...builders].sort(compareByName).map(builder => {
+        const placeholder = renderPlaceholderRow(renderEWSBuilderRow(builder), "loading…");
+        tbody.appendChild(placeholder);
+        return getEWSLastBuilds(ewsAPI, builder.builderid).then(data => {
+            placeholder.replaceWith(data
+                ? renderEWSBuilderRow(builder, data)
+                : renderPlaceholderRow(renderEWSBuilderRow(builder), "Failed to load"));
+        }).catch(err => {
+            console.error(`Failed to load EWS builder ${builder.name}:`, err);
+            placeholder.replaceWith(renderPlaceholderRow(renderEWSBuilderRow(builder), "Failed to load"));
+        });
+    });
 
-    Promise.all(promises).then(() => {
+    Promise.allSettled(promises).then(() => {
         new Tablesort(table);
-    }).catch(err => {
-        console.error("Failed to load EWS builder data:", err);
     });
 
     return table;

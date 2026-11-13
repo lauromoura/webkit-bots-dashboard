@@ -112,6 +112,12 @@ details > summary {
 
 /* Why a job is red: build step vs test step (see lib/steps.js) */
 
+/* Builder-table rows still loading (or failed): name only, status in grey. */
+.placeholder-row .currentBuild {
+    font-style: italic;
+    color: #777;
+}
+
 .skip-count {
     font-size: 0.85em;
     opacity: 0.7;

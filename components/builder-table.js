@@ -2,6 +2,8 @@ import { el } from "./_dom.js";
 import { getLastBuilds, getBuildSteps } from "../lib/api.js";
 import { classifyBuildHealth, isOkResult } from "../lib/steps.js";
 import { renderBuilderRow } from "./builder-row.js";
+import { renderPlaceholderRow } from "./placeholder-row.js";
+import { compareByName } from "../lib/builders.js";
 
 const HEADER_LABELS = [
     "Builder Name",
@@ -60,17 +62,28 @@ export function renderBuilderTable(builders, onLoaded, opts = {}) {
     const tbody = el("tbody");
     const table = el("table", null, [thead, tbody]);
 
-    const promises = builders.map(builder =>
-        getLastBuilds(builder.builderid, 6).then(async data => {
+    // Rows are alphabetical by builder name (sections already group the bots),
+    // whatever order the per-builder responses arrive in: each builder gets a
+    // placeholder row now, replaced in place once its data is in.
+    const promises = [...builders].sort(compareByName).map(builder => {
+        const placeholder = renderPlaceholderRow(renderBuilderRow(builder), "loading…");
+        tbody.appendChild(placeholder);
+        return getLastBuilds(builder.builderid, 6).then(async data => {
+            if (!data) {
+                placeholder.replaceWith(renderPlaceholderRow(renderBuilderRow(builder), "Failed to load"));
+                return;
+            }
             const verdict = opts.stepAware ? await buildVerdict(data) : undefined;
-            tbody.appendChild(renderBuilderRow(builder, data, verdict));
-        })
-    );
+            placeholder.replaceWith(renderBuilderRow(builder, data, verdict));
+        }).catch(err => {
+            console.error(`Failed to load builder ${builder.name}:`, err);
+            placeholder.replaceWith(renderPlaceholderRow(renderBuilderRow(builder), "Failed to load"));
+        });
+    });
 
-    Promise.all(promises).then(() => {
+    // Sorting is set up once every row has settled (loaded or failed).
+    Promise.allSettled(promises).then(() => {
         new Tablesort(table);
-    }).catch(err => {
-        console.error("Failed to load builder data:", err);
     }).finally(() => {
         if (onLoaded)
             onLoaded();
