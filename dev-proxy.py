@@ -43,7 +43,7 @@ separate CORS-enabled proxy on people.igalia.com, so they already work in local
 dev (cross-origin) and need nothing from this proxy.
 
 Usage examples:
-  ./dev-proxy.py                         # serve on http://localhost:8000
+  ./dev-proxy.py                         # serve on http://localhost:8088
   ./dev-proxy.py --port 8080
   ./dev-proxy.py -v                      # log each proxied request to stderr
   ./dev-proxy.py --record fixtures/      # live, and snapshot what pages fetch
@@ -73,7 +73,7 @@ UPSTREAM_TIMEOUT = 30  # seconds; matches the frontend's FETCH_TIMEOUT_MS
 
 STATIC_ROOT = os.path.dirname(os.path.abspath(__file__))
 BIND_HOST = "127.0.0.1"
-DEFAULT_PORT = 8000
+DEFAULT_PORT = 8088
 
 API_PREFIX = "/api/v2/"
 EWS_PREFIX = "/ews/api/v2/"

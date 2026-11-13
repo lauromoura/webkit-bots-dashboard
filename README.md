@@ -11,9 +11,13 @@ pages call the API through `/api/v2/` and `/ews/api/v2/` on their own origin
 (see `lib/config.js`). Run the dev proxy, which serves the pages and forwards
 those paths server-side:
 
-    ./dev-proxy.py                      # live data on http://localhost:8000/
-    ./dev-proxy.py --record fixtures/   # live, and snapshot every API response
-    ./dev-proxy.py --replay fixtures/   # offline, answered from the snapshot
+    make serve          # live data on http://localhost:8088/
+    make serve-replay   # offline, API calls answered from fixtures/
+    make serve-fill     # replay, fetching and recording only missing queries
+    make help           # list targets; override with PORT=... FIXTURES=...
+
+(`make` just wraps `./dev-proxy.py`; `./dev-proxy.py --record fixtures/`
+records a full snapshot from scratch.)
 
 The proxy caches responses for 60 s, coalesces duplicate requests and limits
 itself to 2 concurrent upstream requests, so reloading pages while iterating
