@@ -1,0 +1,136 @@
+# Agent guide — WebKit Bots Dashboard
+
+Read this before changing anything. It covers how the project is laid out, how
+to run and verify it, and the rules that keep us on good terms with the WebKit
+infrastructure.
+
+## What this is
+
+A static dashboard for WebKit gardeners and bot maintainers: plain HTML + ES
+modules, **no build step and no npm dependencies**. Pages call the Buildbot APIs
+of `build.webkit.org` (post-commit) and `ews-build.webkit.org` (EWS) from the
+browser. Production and staging are plain git clones served from
+`people.igalia.com`.
+
+## Layout
+
+| Path | What lives there |
+|---|---|
+| `*.html` | One file per page; most just load `pages/<name>.js` (`index.html` is the Bot Watcher). `job-duration.html` and `results-stats.html` keep their script inline. |
+| `pages/` | Page logic: fetch data, build sections, start auto-refresh. |
+| `components/` | Rendering helpers (tables, rows, nav bar); DOM is built with `el()` from `components/_dom.js`. |
+| `lib/config.js` | **All shared configuration**: Buildbot instances, `apiBase()` / `siteBase()`, the direct-call hosts, timeouts, refresh interval, queue thresholds, EWS knobs. |
+| `lib/api.js` | API clients (`fetchAPI`, `getBuilders`, …, and `ewsAPI`) plus localStorage caches. |
+| `lib/urls.js`, `lib/format.js`, `lib/builders.js` | Buildbot UI links, date/duration formatting, builder tag predicates. |
+| `lib/results.js`, `lib/steps.js` | Result codes and build-step classification; browser-free, importable from Node. |
+| `dev-proxy.py`, `Makefile` | Local dev server + API proxy (cache, throttle, record/replay). |
+| `buildbot-proxy.py` | Flask/gunicorn variant of the proxy. |
+| `digest/` | Python server-side digest pipeline. Its cron is currently disabled; it writes `digest/data/` (git-ignored) and `digest/data-ews/` (not ignored yet: don't commit it). |
+| `mock-server/` | Node mock Buildbot. **Out of date** (builder names don't match production, no EWS): prefer replay fixtures. |
+| `legacy/` | Old pages. Don't touch unless asked. |
+| `docs/api-consumption.md` | Per-page API usage, written for the WebKit sysadmins. |
+| `TODO.md` | Roadmap; the "Priority" list at the top is the current order of work. |
+
+Builder lists and page sections (`pages/gardening.js`, `pages/bot-watcher.js`,
+`pages/queue.js`) intentionally stay in their pages, not in `lib/config.js`.
+
+## Running it
+
+```sh
+make serve-replay   # offline: API calls answered from fixtures/  (default choice)
+make serve-fill     # replay, fetching + recording only queries with no fixture yet
+make serve          # live data through the proxy
+make help           # targets; override with PORT=... FIXTURES=...
+```
+
+Pages are served on `http://localhost:8088/`. `fixtures/` is git-ignored;
+`./dev-proxy.py --record fixtures/` records a full snapshot from scratch, and
+`http://localhost:8088/__proxy/stats` shows how many requests went upstream.
+
+## House rules
+
+**Be gentle with the WebKit Buildbots.** They are shared production
+infrastructure.
+- Develop against `make serve-replay`. Go live only deliberately: prefer
+  `serve-fill` (one request per new query) over re-recording everything.
+- Never load several pages in parallel against live data, and don't loop
+  reloads against it.
+- Any change to *what* or *how much* the pages request must update
+  `docs/api-consumption.md`.
+
+**CORS.** Buildbot only accepts browser requests from allow-listed origins
+(`allowed_origins` in WebKit's
+`Tools/CISupport/{build-webkit-org,ews-build}-webserver/master.cfg`). Pages call
+the APIs directly only on `people.igalia.com` and `teams.pages.igalia.com`;
+everywhere else they go through the same-origin proxy (`/api/v2/`,
+`/ews/api/v2/`).
+- Always build API URLs with `apiBase()` / the clients in `lib/api.js`, and UI
+  links with `siteBase()` / `lib/urls.js`.
+- Never hardcode Buildbot URLs or `location.hostname` checks in pages.
+
+**Dependencies.** No build step, no npm packages. Third-party libraries come
+from `cdn.jsdelivr.net` pinned to an exact version (tablesort is; Chart.js isn't
+yet, see `TODO.md`).
+
+**Working agreement.**
+- Agree on the problem definition and the proposed fix with the maintainer
+  before implementing; don't jump-start implementation.
+- One focused commit per change; the message explains *why*, not just what.
+- Verify (below) before committing, and say what you verified.
+
+**Git safety.**
+- Never push directly to `origin/main`, and never force-push it. Work on a
+  branch; `main` is updated by the maintainer (PR or merge).
+- Force-pushing your own feature branch (e.g. after a rebase) is fine, but
+  always with `--force-with-lease`.
+- The one intentional force-push to a `main` is staging (next section): staging
+  is disposable and always mirrors the current candidate.
+
+## Candidate staging
+
+The `staging` remote is already set up (git+ssh, with `updateInstead` on the
+receiving checkout), so pushing to it immediately updates the staging page:
+
+```sh
+git push --force staging <branch>:main
+```
+
+Before asking anyone to validate a change, it must be on staging. If you can't
+push there (no SSH access), ask the maintainer to run that command.
+
+## Verifying a change
+
+Until the automated smoke test lands (`TODO.md`, priority item 3):
+
+1. Run `./dev-proxy.py --replay fixtures/ -v` (or `make serve-replay`) and load
+   every page your change can affect; check the browser console for errors.
+   404s for `digest/data*` files are expected locally.
+2. Compare the API paths each page requests before and after your change
+   (`-v` logs every `proxy GET`); unexpected differences are regressions, and
+   expected ones go into `docs/api-consumption.md`.
+3. For behavior changes, compare the rendered result (tables, links, labels)
+   before and after under the same replayed data.
+4. For bug fixes, write the reproduction first and check that it fails before
+   the fix and passes after.
+
+Note that relative times ("5 min ago") drift in replay, since fixtures keep
+their original timestamps.
+
+## Buildbot gotchas
+
+- **EWS queues run many builds at once.** The newest build numbers are often
+  several in-progress builds interleaved with finished ones; never infer
+  "current" or "last finished" from position. Query `complete__eq=false` /
+  `complete__eq=true` separately.
+- **In-progress builds have `complete_at: null`**; treated as a timestamp it
+  becomes the Unix epoch ("20768 days ago").
+- **Result codes** (`lib/results.js`): 0 success, 1 warnings, 2 failure,
+  3 skipped, 4 exception, 5 retry, 6 cancelled. EWS uses *skipped* for closed
+  PRs / outdated hashes: those builds ran nothing.
+- **`meta.total` on build.webkit.org echoes the page size**, not the real
+  total. Build numbers are sequential per builder, so newest number + offset
+  gives the total (not for worker-filtered EWS queries, which have gaps).
+- **Async loads race.** If a page can start a new load before the previous one
+  finishes, make sure only the latest one renders (see `job-duration.html`).
+- **Production and staging share localStorage** (same `people.igalia.com`
+  origin), so cache keys can collide between them.
