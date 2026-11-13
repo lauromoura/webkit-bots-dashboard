@@ -9,7 +9,7 @@ In this order:
 3. [ ] **Verification loop in the repo** — a Playwright smoke test (e.g. `tools/smoke.py`) that loads every page against `dev-proxy.py --replay` and fails on console errors, plus fixtures (decide: commit a trimmed snapshot vs regenerate with `--record`). Package it as a devcontainer so Codespaces / Claude Code get the same loop (needs item 1).
 4. [ ] **Candidate staging** — before asking anyone to validate a change, update the staging deploy (`people.igalia.com/lmoura/webkit-bots-dashboard-staging/`) with the candidate branch. Make it a local push: `git config receive.denyCurrentBranch updateInstead` in the staging checkout, then `git push staging <branch>:main` from a local clone (keep the staging tree clean).
 5. [ ] **Retire or fix the mock server** — it has drifted (builder names don't match production, no EWS endpoints, `buildbot-mock-server.md` points at files that no longer exist) and renders "fine" with wrong data. Replay fixtures may replace it entirely.
-6. [ ] **Pin CDN dependencies, then add SRI** — Chart.js and `chartjs-adapter-date-fns` are loaded unversioned (tablesort is pinned); pin them to exact versions, then add `integrity` hashes to all CDN tags.
+6. [x] **Vendor the CDN libraries** — tablesort 5.7.0, Chart.js 4.6.1 and `chartjs-adapter-date-fns` 3.0.0 now live in `vendor/` (pinned, with licenses and SHA-256 sums, fetched by `tools/vendor.py`), so pages and tests no longer depend on `cdn.jsdelivr.net` and SRI is unnecessary. `legacy/charts.html` still loads Plotly from a CDN.
 
 ## Quick fixes / Low-hanging fruit
 

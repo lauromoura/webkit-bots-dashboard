@@ -6,7 +6,7 @@ PORT ?= 8088
 FIXTURES ?= fixtures
 PYTHON ?= python3
 
-.PHONY: help serve serve-replay serve-fill
+.PHONY: help serve serve-replay serve-fill vendor vendor-check
 
 help: ## List the available targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/' | expand -t 16
@@ -21,3 +21,9 @@ serve-replay: ## Serve offline, answering API calls from FIXTURES only
 serve-fill: ## Like serve-replay, but fetch and record queries with no fixture yet
 	@mkdir -p $(FIXTURES)
 	$(PYTHON) dev-proxy.py --port $(PORT) --replay $(FIXTURES) --fill-missing
+
+vendor: ## Re-fetch the pinned third-party libraries into vendor/ (network)
+	$(PYTHON) tools/vendor.py
+
+vendor-check: ## Verify vendor/ against vendor/SHA256SUMS (offline)
+	cd vendor && sha256sum -c --quiet SHA256SUMS && echo "vendor/ OK"
