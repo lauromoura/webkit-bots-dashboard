@@ -1,9 +1,10 @@
 """Builder tables (Bot Watcher, gardening): order, placeholders, failures."""
 
-import json
 import re
 
 import pytest
+
+from synthetic import build, builds_response, fulfill_json
 
 # Every table's builder names, its placeholder rows and its section title.
 TABLES_JS = """() => [...document.querySelectorAll('table')].map(t => ({
@@ -92,16 +93,6 @@ def test_failed_builder_shows_failure_and_table_still_sorts(open_page):
     assert rec.page.locator("table").nth(1).locator("th[aria-sort]").count() == 1
 
 
-def synthetic_builds(builder_id, now):
-    """One finished, successful build: enough for a row to render."""
-    return {"builds": [{
-        "builderid": builder_id, "buildid": 900000 + builder_id, "number": 1,
-        "complete": True, "results": 0, "state_string": "build successful",
-        "started_at": now - 3600, "complete_at": now - 1800,
-        "properties": {}, "workerid": 1, "masterid": 1, "buildrequestid": 1,
-    }], "meta": {"total": 1}}
-
-
 @pytest.mark.parametrize("path", ["index.html", "gardening.html"])
 def test_collapsed_sections_load_alphabetically(open_page, frozen_time, path):
     """Collapsed sections aren't in the recorded fixtures (they're only fetched
@@ -117,8 +108,7 @@ def test_collapsed_sections_load_alphabetically(open_page, frozen_time, path):
         if builder_id in eager:
             route.continue_()
         else:
-            route.fulfill(status=200, content_type="application/json",
-                          body=json.dumps(synthetic_builds(builder_id, now)))
+            fulfill_json(route, builds_response(build(builder_id, now=now)))
 
     rec.page.route(re.compile(r".*/api/v2/builders/\d+/builds\?.*"), answer)
     summaries = rec.page.locator("details > summary")

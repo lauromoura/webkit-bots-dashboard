@@ -15,7 +15,8 @@ Routes (query strings preserved):
   /__proxy/stats    -> JSON counters (upstream fetches, cache hits, ...)
 everything else is served as a static file from the repo root.
 
-Unlike mock-server/server.js (which fabricates data), this returns REAL data.
+It returns REAL data; for specific scenarios, tests answer requests with
+synthetic responses instead (tests/synthetic.py).
 
 Being a good citizen towards the WebKit infrastructure
 ------------------------------------------------------

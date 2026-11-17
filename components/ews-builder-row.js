@@ -62,9 +62,9 @@ export function renderEWSBuilderRow(builder, data) {
     if (!data)
         return row;
 
-    // Defensive filtering: a backend that ignores the complete__eq filter (e.g.
-    // the mock server) returns mixed lists, and an in-progress build must never
-    // be shown as the last run (its complete_at is null, i.e. "the epoch").
+    // Defensive filtering: never trust the complete__eq filter alone. An
+    // in-progress build must never be shown as the last run (its complete_at
+    // is null, i.e. "the epoch").
     const finishedBuilds = (data.builds || []).filter(b => b.complete);
     // Skipped builds (closed PR, outdated hash, ...) didn't run anything: they
     // are only counted, as a churn indicator, never shown as runs.

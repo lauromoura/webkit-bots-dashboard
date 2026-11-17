@@ -43,3 +43,9 @@ Use the `open_page` fixture (`rec = open_page(); rec.goto("page.html")`), and
 end with `assert rec.problems() == []`. For a bug fix, write the test first and
 check it fails without the fix. Avoid fixed sleeps: wait on the page's own
 signals (no "loading…" rows, status text), as the existing tests do.
+
+To test a situation the recorded data doesn't contain (a broken builder, a
+build still running, a skipped EWS run, ...), intercept the request and answer
+it with `synthetic.py` (`build()`, `builds_response()`, `fulfill_json()`), as
+`test_collapsed_sections_load_alphabetically` does. Never add synthetic data
+to `fixtures/`.
